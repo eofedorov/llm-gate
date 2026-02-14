@@ -8,7 +8,6 @@ __pycache__/
 *.so
 build/
 dist/
-*.egg
 *.egg-info/
 .eggs/
 *.manifest
@@ -54,3 +53,5 @@ DESCRIPTION.md
 .DS_Store
 Thumbs.db
 Desktop.ini
+
+data/faiss_index

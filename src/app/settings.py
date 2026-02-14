@@ -21,3 +21,5 @@ class Settings(BaseSettings):
     llm_timeout: int = 0
     llm_max_retries: int = 0
     enable_token_meter: bool = False
+    # RAG: path to FAISS index dir (default: project_root/data/faiss_index)
+    rag_index_dir: str = ""

@@ -1,0 +1,22 @@
+[
+  {"question": "What should I do when Redis evictions cause cart staleness and 409 errors?", "expected_doc_ids": ["kb-2026-02-runbook-redis-evictions"], "expected_status": "ok"},
+  {"question": "How do I fix Stripe webhook backlog and invalid signature errors?", "expected_doc_ids": ["kb-2026-01-runbook-stripe-webhook-backlog"], "expected_status": "ok"},
+  {"question": "Elasticsearch cluster is red; search-api returns 503. What mitigation steps are there?", "expected_doc_ids": ["kb-2025-10-runbook-es-cluster-red"], "expected_status": "ok"},
+  {"question": "Kubernetes rollout is stuck and pods are in CrashLoopBackOff. How do I triage?", "expected_doc_ids": ["kb-2025-06-runbook-k8s-rollout-stuck"], "expected_status": "ok"},
+  {"question": "Postgres says too many clients already. How do we reduce connection exhaustion?", "expected_doc_ids": ["kb-2024-11-runbook-postgres-connection-exhaustion"], "expected_status": "ok"},
+  {"question": "Why did we choose Stripe webhooks as source of truth for payment state?", "expected_doc_ids": ["kb-2024-12-adr-stripe-webhooks"], "expected_status": "ok"},
+  {"question": "What is the Redis cache key format and eviction policy for carts?", "expected_doc_ids": ["kb-2025-03-adr-redis-cart-cache"], "expected_status": "ok"},
+  {"question": "How does index aliasing work for Elasticsearch product reindexing?", "expected_doc_ids": ["kb-2025-02-adr-es-aliasing"], "expected_status": "ok"},
+  {"question": "What is PgBouncer pool mode and how do services connect to it?", "expected_doc_ids": ["kb-2024-08-adr-pgbouncer"], "expected_status": "ok"},
+  {"question": "How do I run checkout-service and cart-service locally with Docker?", "expected_doc_ids": ["kb-2026-01-onboarding-fastapi-services"], "expected_status": "ok"},
+  {"question": "What is the payments flow between checkout-service, payment-gateway and Stripe?", "expected_doc_ids": ["kb-2025-04-onboarding-payments"], "expected_status": "ok"},
+  {"question": "How do I get cart for a user from the cart-service API?", "expected_doc_ids": ["kb-2025-11-api-cart-service"], "expected_status": "ok"},
+  {"question": "What endpoints does checkout-service expose for starting checkout?", "expected_doc_ids": ["kb-2025-09-api-checkout-service"], "expected_status": "ok"},
+  {"question": "What caused the Redis OOM incident and what was the follow-up?", "expected_doc_ids": ["kb-2025-11-postmortem-redis-oom"], "expected_status": "ok"},
+  {"question": "What is in the production deploy checklist before releasing?", "expected_doc_ids": ["kb-2025-09-checklist-prod-deploy", "kb-2024-10-checklist-weekly-ops"], "expected_status": "ok"},
+  {"question": "What is the capital of France and its population?", "expected_doc_ids": [], "expected_status": "insufficient_context"},
+  {"question": "How do I configure MySQL replication for read replicas?", "expected_doc_ids": [], "expected_status": "insufficient_context"},
+  {"question": "What is the best recipe for chocolate cake?", "expected_doc_ids": [], "expected_status": "insufficient_context"},
+  {"question": "Explain quantum entanglement in simple terms.", "expected_doc_ids": [], "expected_status": "insufficient_context"},
+  {"question": "What are the opening hours of the office in Berlin?", "expected_doc_ids": [], "expected_status": "insufficient_context"}
+]

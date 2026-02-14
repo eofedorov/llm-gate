@@ -1,0 +1,13 @@
+Answer the question using ONLY the following context chunks. Do not use external knowledge.
+If the context does not contain enough information to answer, set status to "insufficient_context" and give a short answer saying so.
+When you can answer, cite the relevant passage(s) in the "quote" field of each source and set status to "ok".
+
+Context chunks (each block is one chunk from the knowledge base):
+---
+{{ context_chunks }}
+---
+
+Question: {{ question }}
+
+Respond with valid JSON only, following this schema (no text before or after the JSON):
+{{ output_contract }}

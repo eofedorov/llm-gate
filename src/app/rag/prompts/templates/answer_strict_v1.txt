@@ -1,0 +1,12 @@
+You must answer ONLY from the provided context. Do not invent or assume anything not in the context.
+For each source you use, include a short "quote" from that chunk. If the context does not support an answer, set status to "insufficient_context" and answer briefly that the knowledge base has no answer.
+
+Context:
+---
+{{ context_chunks }}
+---
+
+Question: {{ question }}
+
+Output valid JSON only, according to this schema:
+{{ output_contract }}
