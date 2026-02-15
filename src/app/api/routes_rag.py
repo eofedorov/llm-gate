@@ -9,14 +9,13 @@ from app.contracts.rag_schemas import AnswerContract
 from app.rag.ask_service import ask
 from app.rag.formats import truncate_preview
 from app.rag.ingest.indexer import run_ingestion
+from app.rag.ingest.loader import DEFAULT_KB_PATH
 from app.rag.retrieve import retrieve
+from app.settings import Settings
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
-
-# Project root for default kb path (src/app/api -> 3 parents to src, 4 to project root)
-_PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent.parent
-DEFAULT_KB_PATH = _PROJECT_ROOT / "data"
+_settings = Settings()
 
 
 class IngestResponse(BaseModel):
@@ -35,14 +34,14 @@ class SearchHit(BaseModel):
 
 class AskRequestBody(BaseModel):
     question: str = Field(..., min_length=1)
-    k: int = Field(default=5, ge=1, le=20)
+    k: int = Field(default=_settings.rag_default_k, ge=1, le=20)
     filters: dict | None = None
     strict_mode: bool = False
 
 
 @router.post("/ingest", response_model=IngestResponse)
 def post_ingest():
-    """Index documents from data/ (all *.json) into FAISS. Returns stats."""
+    """Индексация документов из data/ (все *.json) в FAISS. Возвращает статистику."""
     logger.info("[RAG] POST /ingest starting")
     result = run_ingestion(kb_path=DEFAULT_KB_PATH)
     logger.info("[RAG] POST /ingest done docs=%s chunks=%s duration_ms=%s", result.get("docs_indexed"), result.get("chunks_indexed"), result.get("duration_ms"))
@@ -56,10 +55,10 @@ def post_ingest():
 @router.get("/search", response_model=list[SearchHit])
 def get_search(
     q: str = Query(..., min_length=1),
-    k: int = Query(default=5, ge=1, le=20),
+    k: int = Query(default=_settings.rag_default_k, ge=1, le=20),
     debug: bool = Query(default=False),
 ):
-    """Search for top-k chunks by query. Returns chunk_id, score, doc_title, path, text_preview."""
+    """Поиск top-k чанков по запросу. Возвращает chunk_id, score, doc_title, path, text_preview."""
     chunks = retrieve(query=q, k=k)
     doc_ids = [m.get("doc_id") for _, _, m in chunks]
     logger.info("[RAG] GET /search q_len=%d chunks=%d doc_ids=%s", len(q), len(chunks), doc_ids)
@@ -74,13 +73,13 @@ def get_search(
         for cid, score, meta in chunks
     ]
     if debug:
-        return out  # Could add debug fields to response; for now same body
+        return out  # Можно добавить отладочные поля в ответ; пока то же тело
     return out
 
 
 @router.post("/ask", response_model=AnswerContract)
 def post_ask(body: AskRequestBody, debug: bool = Query(default=False)):
-    """Answer question from knowledge base with citations. Returns AnswerContract."""
+    """Ответ на вопрос по базе знаний с цитатами. Возвращает AnswerContract."""
     logger.info("[RAG] POST /ask question_len=%d k=%d", len(body.question), body.k)
     contract = ask(
         question=body.question,
@@ -89,5 +88,5 @@ def post_ask(body: AskRequestBody, debug: bool = Query(default=False)):
         strict_mode=body.strict_mode,
     )
     if debug:
-        pass  # Log chunks_used/doc_ids already in ask_service
+        pass  # chunks_used/doc_ids уже логируются в ask_service
     return contract

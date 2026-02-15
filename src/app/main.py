@@ -1,4 +1,4 @@
-"""FastAPI entrypoint."""
+"""Точка входа FastAPI."""
 import logging
 
 from fastapi import FastAPI

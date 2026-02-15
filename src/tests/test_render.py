@@ -71,4 +71,4 @@ def test_render_no_empty_required_parts():
     _, user = render(spec, ctx)
     assert "T" in user
     assert "x" in user
-    assert "  " not in user or user.count("  ") < 5  # no excessive empty blocks
+    assert "  " not in user or user.count("  ") < 5  # без избыточных пустых блоков

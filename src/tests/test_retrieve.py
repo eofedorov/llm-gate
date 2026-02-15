@@ -1,4 +1,4 @@
-"""Retrieval: after ingest, search returns relevant chunks."""
+"""Retrieval: после индексации поиск возвращает релевантные чанки."""
 import tempfile
 from pathlib import Path
 
@@ -16,8 +16,8 @@ from app.rag.store.faiss_store import FaissStore
 
 
 def test_retrieve_without_index_returns_empty():
-    """When no index exists, retrieve returns empty list."""
-    # Use a temp dir with no index
+    """При отсутствии индекса retrieve возвращает пустой список."""
+    # Временная директория без индекса
     with tempfile.TemporaryDirectory() as tmp:
         store = FaissStore(index_dir=tmp)
         results = retrieve("Redis cache bypass", k=3, store=store)
@@ -27,7 +27,7 @@ def test_retrieve_without_index_returns_empty():
 @pytest.mark.slow
 @pytest.mark.skipif(not HAS_SENTENCE_TRANSFORMERS, reason="sentence-transformers not installed")
 def test_retrieve_after_ingest_returns_chunks():
-    """Run full ingest then retrieve; should get chunks with metadata."""
+    """Полная индексация, затем retrieve; должны вернуться чанки с метаданными."""
     run_ingestion()
     results = retrieve("Redis evictions cart staleness", k=3)
     assert len(results) > 0

@@ -1,4 +1,4 @@
-"""Run ingestion: load docs -> chunk -> embed (sentence-transformers) -> save to FAISS."""
+"""Запуск индексации: загрузка документов -> чанкинг -> эмбеддинги (sentence-transformers) -> сохранение в FAISS."""
 import time
 from pathlib import Path
 
@@ -6,25 +6,29 @@ from app.rag.ingest.chunker import chunk_document
 from app.rag.ingest.loader import load_documents
 from app.rag.store.faiss_store import FaissStore, metadata_from_chunk
 from app.rag.store.models import ChunkMeta
+from app.settings import Settings
 
-EMBEDDING_MODEL = "intfloat/multilingual-e5-small"
+_settings = Settings()
+
 
 def _get_embedding_model():
     from sentence_transformers import SentenceTransformer
-    return SentenceTransformer(EMBEDDING_MODEL)
+    return SentenceTransformer(_settings.rag_embedding_model)
 
 
 def run_ingestion(
     kb_path: Path | str | None = None,
     index_dir: Path | str | None = None,
-    chunk_size: int = 512,
-    overlap: int = 64,
+    chunk_size: int | None = None,
+    overlap: int | None = None,
 ) -> dict[str, int | float]:
     """
-    Load knowledge base -> chunk -> embed -> save to FAISS.
-    Returns { docs_indexed, chunks_indexed, duration_ms }.
+    Загрузить базу знаний -> чанкинг -> эмбеддинги -> сохранить в FAISS.
+    Возвращает { docs_indexed, chunks_indexed, duration_ms }.
     """
     start = time.perf_counter()
+    cs = chunk_size if chunk_size is not None else _settings.rag_chunk_size
+    ov = overlap if overlap is not None else _settings.rag_chunk_overlap
     docs = load_documents(kb_path)
     if not docs:
         return {"docs_indexed": 0, "chunks_indexed": 0, "duration_ms": 0.0}
@@ -32,7 +36,7 @@ def run_ingestion(
     all_chunks: list[ChunkMeta] = []
     for doc in docs:
         all_chunks.extend(
-            chunk_document(doc, chunk_size=chunk_size, overlap=overlap)
+            chunk_document(doc, chunk_size=cs, overlap=ov)
         )
 
     if not all_chunks:

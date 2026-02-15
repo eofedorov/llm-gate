@@ -1,4 +1,4 @@
-"""Ask service: mock LLM returns valid AnswerContract; insufficient when no context."""
+"""Ask service: замоканный LLM возвращает валидный AnswerContract; при отсутствии контекста — insufficient."""
 import pytest
 
 from app.contracts.rag_schemas import AnswerContract
@@ -6,7 +6,7 @@ from app.rag.ask_service import ask
 
 
 def test_ask_empty_retrieve_returns_insufficient():
-    """When retrieve returns no chunks, ask returns insufficient_context without calling LLM."""
+    """При пустом retrieve ask возвращает insufficient_context без вызова LLM."""
     def empty_retrieve(_q, k=5, filters=None):
         return []
 
@@ -17,7 +17,7 @@ def test_ask_empty_retrieve_returns_insufficient():
 
 
 def test_ask_mock_llm_valid_json_returns_contract():
-    """When retrieve returns chunks and LLM returns valid AnswerContract JSON, we get parsed contract."""
+    """При чанках от retrieve и валидном AnswerContract JSON от LLM получаем распарсенный контракт."""
     def fake_retrieve(q, k=5, filters=None):
         return [
             ("doc:kb-2026-02-runbook-redis-evictions#chunk:0", 0.9, {
@@ -53,7 +53,7 @@ def test_ask_mock_llm_valid_json_returns_contract():
 
 
 def test_ask_mock_llm_invalid_json_returns_insufficient():
-    """When LLM returns invalid JSON, ask returns insufficient_context."""
+    """При невалидном JSON от LLM ask возвращает insufficient_context."""
     def fake_retrieve(q, k=5, filters=None):
         return [("doc:x#chunk:0", 0.8, {"chunk_id": "doc:x#chunk:0", "doc_id": "x", "title": "X", "text": "y"})]
 

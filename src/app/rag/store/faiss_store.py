@@ -1,4 +1,4 @@
-"""FAISS index load/save and search. Metadata stored as JSON alongside index."""
+"""Загрузка/сохранение индекса FAISS и поиск. Метаданные хранятся в JSON рядом с индексом."""
 import json
 from pathlib import Path
 from typing import Any
@@ -8,7 +8,7 @@ from app.settings import Settings
 
 _settings = Settings()
 
-# Project root: src/app/rag/store/faiss_store.py -> 5 parents
+# Корень проекта: src/app/rag/store/faiss_store.py -> 5 уровней вверх
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent.parent.parent
 DEFAULT_INDEX_DIR = _PROJECT_ROOT / "data" / "faiss_index"
 INDEX_FILE = "index.faiss"
@@ -22,7 +22,7 @@ def _index_dir() -> Path:
 
 
 class FaissStore:
-    """Load/save FAISS index and metadata; search returns (chunk_id, score, meta)."""
+    """Загрузка/сохранение индекса FAISS и метаданных; поиск возвращает (chunk_id, score, meta)."""
 
     def __init__(self, index_dir: Path | str | None = None):
         self._dir = Path(index_dir) if index_dir is not None else _index_dir()
@@ -34,7 +34,7 @@ class FaissStore:
         self._dir.mkdir(parents=True, exist_ok=True)
 
     def save(self, vectors: list[list[float]], metadata: list[dict[str, Any]]) -> None:
-        """Save vectors to FAISS and metadata to JSON."""
+        """Сохранить векторы в FAISS и метаданные в JSON."""
         import faiss
         import numpy as np
 
@@ -43,7 +43,7 @@ class FaissStore:
             return
         arr = np.array(vectors, dtype=np.float32)
         dim = arr.shape[1]
-        index = faiss.IndexFlatIP(dim)  # inner product for normalized vectors
+        index = faiss.IndexFlatIP(dim)  # скалярное произведение для нормализованных векторов
         faiss.normalize_L2(arr)
         index.add(arr)
         path = self._dir / INDEX_FILE
@@ -55,7 +55,7 @@ class FaissStore:
         self._dim = dim
 
     def load(self) -> bool:
-        """Load index and metadata from disk. Returns True if loaded."""
+        """Загрузить индекс и метаданные с диска. Возвращает True при успехе."""
         import faiss
 
         path = self._dir / INDEX_FILE
@@ -79,9 +79,9 @@ class FaissStore:
         filters: dict[str, Any] | None = None,
     ) -> list[tuple[str, float, dict[str, Any]]]:
         """
-        Search by query vector. Returns list of (chunk_id, score, meta_dict).
-        filters: optional { "document_type": "...", "doc_id": "..." } for post-filter.
-        FAISS IndexFlatIP returns inner product; we use it as similarity (assume normalized).
+        Поиск по вектору запроса. Возвращает список (chunk_id, score, meta_dict).
+        filters: опционально { "document_type": "...", "doc_id": "..." } для пост-фильтрации.
+        FAISS IndexFlatIP возвращает скалярное произведение; используем как similarity (векторы нормализованы).
         """
         import faiss
         import numpy as np
@@ -91,7 +91,7 @@ class FaissStore:
             return []
         q = np.array([query_vector], dtype=np.float32)
         faiss.normalize_L2(q)
-        scores, indices = index.search(q, min(k * 3, index.ntotal))  # fetch extra for filtering
+        scores, indices = index.search(q, min(k * 3, index.ntotal))  # берём с запасом для фильтрации
         results: list[tuple[str, float, dict[str, Any]]] = []
         for i, idx in enumerate(indices[0]):
             if idx < 0:
@@ -114,7 +114,7 @@ class FaissStore:
 
 
 def metadata_from_chunk(chunk: ChunkMeta) -> dict[str, Any]:
-    """Serialize ChunkMeta for JSON storage (no Pydantic)."""
+    """Сериализация ChunkMeta в dict для хранения в JSON (без Pydantic)."""
     return {
         "chunk_id": chunk.chunk_id,
         "doc_id": chunk.doc_id,

@@ -21,5 +21,13 @@ class Settings(BaseSettings):
     llm_timeout: int = 0
     llm_max_retries: int = 0
     enable_token_meter: bool = False
-    # RAG: path to FAISS index dir (default: project_root/data/faiss_index)
+    # RAG: путь к директории индекса FAISS (по умолчанию project_root/data/faiss_index)
     rag_index_dir: str = ""
+    # RAG: модель эмбеддингов, размер чанка, перекрытие, дефолтный k, порог relevance
+    rag_embedding_model: str = "intfloat/multilingual-e5-small"
+    rag_chunk_size: int = 512
+    rag_chunk_overlap: int = 64
+    rag_default_k: int = 5
+    rag_relevance_threshold: float = 0.3
+    # RAG: путь к базе знаний (пусто = project_root/data)
+    rag_kb_path: str = ""

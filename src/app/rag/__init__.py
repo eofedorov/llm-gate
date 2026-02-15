@@ -1,1 +1,1 @@
-"""RAG module: ingestion, retrieval, and answer-with-citations."""
+"""Модуль RAG: индексация, поиск, ответ с цитатами."""

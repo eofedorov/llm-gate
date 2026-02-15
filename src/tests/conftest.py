@@ -1,8 +1,8 @@
-"""Pytest fixtures and config."""
+"""Фикстуры и конфиг Pytest."""
 import sys
 from pathlib import Path
 
-# ensure src is on path when running tests from repo root (src/tests/conftest.py -> root = repo, src = root/src)
+# добавить src в path при запуске тестов из корня репозитория (src/tests/conftest.py -> root = репо, src = root/src)
 root = Path(__file__).resolve().parent.parent.parent
 src = root / "src"
 if str(src) not in sys.path:

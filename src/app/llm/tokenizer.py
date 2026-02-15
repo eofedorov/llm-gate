@@ -11,7 +11,7 @@ import tiktoken
 
 logger = logging.getLogger(__name__)
 
-# Overhead на сообщение и на ответ (как в OpenAI cookbook)
+# Накладные расходы на сообщение и на ответ (как в документации OpenAI)
 TOKENS_PER_MESSAGE = 3
 TOKENS_PER_REPLY_PRIMER = 3
 

@@ -1,11 +1,11 @@
-"""Normalize and clean text before chunking and before sending to LLM."""
+"""Нормализация и очистка текста перед чанкингом и перед отправкой в LLM."""
 import re
 
 
 def normalize_text(text: str) -> str:
     """
-    Normalize text: collapse whitespace, strip, remove excessive newlines.
-    Used before chunking and when preparing context for LLM.
+    Нормализация текста: схлопнуть пробелы, trim, убрать лишние переносы строк.
+    Используется перед чанкингом и при подготовке контекста для LLM.
     """
     if not text or not isinstance(text, str):
         return ""
@@ -16,7 +16,7 @@ def normalize_text(text: str) -> str:
 
 
 def truncate_preview(text: str, max_chars: int = 300) -> str:
-    """Truncate text for search result preview."""
+    """Обрезать текст для превью результата поиска."""
     if not text:
         return ""
     normalized = normalize_text(text)

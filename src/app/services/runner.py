@@ -51,6 +51,7 @@ def run(
     input_data: str | dict,
     constraints: dict[str, Any] | None = None,
     *,
+    extras: dict[str, Any] | None = None,
     _call_llm: Any = None,
 ) -> dict[str, Any]:
     """
@@ -60,7 +61,7 @@ def run(
     """
     call_llm = _call_llm if _call_llm is not None else llm_client.call_llm
 
-    # --- Prompt Registry ---
+    # --- Реестр промптов ---
     logger.info("[Registry] lookup prompt_name=%s version=%s", prompt_name, version)
     spec = get_prompt_by_name_version(prompt_name, version)
     if not spec:
@@ -68,7 +69,7 @@ def run(
         return {"ok": False, "error": "unknown prompt", "diagnostics": f"{prompt_name} {version}"}
     logger.info("[Registry] found spec key=%s template=%s", spec.key, spec.template_path.name)
 
-    # --- Context Builder ---
+    # --- Сбор контекста ---
     schema_class = spec.output_schema
     output_contract = get_schema_description(schema_class)
     context = RenderContext(
@@ -76,6 +77,7 @@ def run(
         input_data=input_data,
         constraints=constraints or {},
         output_contract=output_contract,
+        extras=extras,
     )
     system_message, user_message = render(spec, context)
     messages = [
@@ -87,19 +89,19 @@ def run(
         len(system_message), len(user_message),
     )
 
-    # --- Token count (до вызова) ---
+    # --- Подсчёт токенов (до вызова) ---
     prompt_tokens = count_tokens(messages, _settings.llm_model)
     if prompt_tokens > 0:
         logger.info("[Tokenizer] prompt_tokens=%d model=%s", prompt_tokens, _settings.llm_model)
 
-    # --- LLM Client ---
+    # --- Вызов LLM ---
     start = time.perf_counter()
     logger.info("[LLM] calling model=%s", _settings.llm_model)
     raw_response = call_llm(messages)
     elapsed = time.perf_counter() - start
     logger.info("[LLM] response received elapsed_sec=%.2f response_len=%d", elapsed, len(raw_response))
 
-    # --- Schema Validator ---
+    # --- Валидация по схеме ---
     parsed = _extract_json_from_text(raw_response)
     logger.info("[Validator] parse attempt extracted_len=%d", len(parsed))
     model, err = _parse_and_validate(parsed, schema_class)
@@ -110,7 +112,7 @@ def run(
 
     logger.warning("[Validator] failed %s", err)
 
-    # --- Repair (если нужно) ---
+    # --- Repair при невалидном ответе ---
     logger.info("[Repair] triggering repair pass")
     repair_messages = [
         {"role": "system", "content": REPAIR_SYSTEM + "\n\nСхема:\n" + output_contract[:1500]},

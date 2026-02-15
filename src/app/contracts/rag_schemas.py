@@ -1,11 +1,11 @@
-"""RAG answer contract: answer with citations, sources, status ok | insufficient_context."""
+"""Контракт ответа RAG: ответ с цитатами, sources, status ok | insufficient_context."""
 from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
 
 class SourceCitation(BaseModel):
-    """One source with chunk_id, doc title, quote, relevance."""
+    """Один источник: chunk_id, заголовок документа, цитата, relevance."""
     model_config = ConfigDict(extra="forbid")
 
     chunk_id: str
@@ -15,7 +15,7 @@ class SourceCitation(BaseModel):
 
 
 class AnswerContract(BaseModel):
-    """Response contract for POST /rag/ask."""
+    """Контракт ответа для POST /rag/ask."""
     model_config = ConfigDict(extra="forbid")
 
     answer: str

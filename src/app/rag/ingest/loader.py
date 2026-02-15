@@ -1,18 +1,20 @@
-"""Load documents from data/ directory (all *.json with 'documents' array) or a single JSON file."""
+"""Загрузка документов из директории data/ (все *.json с массивом 'documents') или из одного JSON-файла."""
 import json
 from pathlib import Path
 from typing import Any
 
 from app.rag.formats import normalize_text
+from app.settings import Settings
 
-# Default path: project root is parent of src (src/app/rag/ingest -> 4 levels up to src, 5 to root)
+_settings = Settings()
+# Путь по умолчанию: корень проекта — родитель src (src/app/rag/ingest -> 4 уровня до src, 5 до корня)
 _SRC_ROOT = Path(__file__).resolve().parent.parent.parent.parent
 _PROJECT_ROOT = _SRC_ROOT.parent
-DEFAULT_KB_PATH = _PROJECT_ROOT / "data"
+DEFAULT_KB_PATH = Path(_settings.rag_kb_path) if _settings.rag_kb_path else _PROJECT_ROOT / "data"
 
 
 def _load_from_file(p: Path) -> list[dict[str, Any]]:
-    """Load documents from a single JSON file."""
+    """Загрузить документы из одного JSON-файла."""
     raw = p.read_text(encoding="utf-8")
     data = json.loads(raw)
     docs = data.get("documents") or []
@@ -37,9 +39,9 @@ def _load_from_file(p: Path) -> list[dict[str, Any]]:
 
 def load_documents(path: Path | str | None = None) -> list[dict[str, Any]]:
     """
-    Load documents from path. If path is a directory, load all *.json files
-    (with 'documents' array). If path is a file, load that file.
-    Returns list of dicts with: doc_id, title, path, document_type, created_at, content.
+    Загрузить документы из path. Если path — директория, загружаются все *.json
+    (с массивом 'documents'). Если path — файл, загружается этот файл.
+    Возвращает список dict с полями: doc_id, title, path, document_type, created_at, content.
     """
     p = Path(path) if path is not None else DEFAULT_KB_PATH
     if not p.exists():

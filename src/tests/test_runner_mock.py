@@ -8,7 +8,7 @@ VALID_CLASSIFY_JSON = '{"label": "bug", "confidence": 0.93, "rationale": "Оши
 VALID_EXTRACT_JSON = '{"entities": [{"type": "component", "value": "payment"}], "summary": "Bug in payment."}'
 # Почти JSON: текст вокруг + невалидный объект (нет rationale), чтобы сработал repair
 ALMOST_JSON_FIRST = "Вот ответ:\n" + '{"label": "bug", "confidence": 0.9}' + "\nГотово."
-INVALID_JSON = '{"label": "bug", "confidence": 0.9}'  # missing rationale
+INVALID_JSON = '{"label": "bug", "confidence": 0.9}'  # нет rationale
 
 
 def test_runner_valid_first_response_no_repair():
@@ -39,7 +39,7 @@ def test_runner_almost_json_then_repair_returns_valid():
         nonlocal call_count
         call_count += 1
         if call_count == 1:
-            return ALMOST_JSON_FIRST  # invalid: missing rationale
+            return ALMOST_JSON_FIRST  # невалидно: нет rationale
         return VALID_CLASSIFY_JSON
 
     result = run(
@@ -60,7 +60,7 @@ def test_runner_both_invalid_returns_error_no_crash():
     def mock_llm(messages):
         nonlocal call_count
         call_count += 1
-        return INVALID_JSON  # missing required rationale
+        return INVALID_JSON  # нет обязательного rationale
 
     result = run(
         "classify",

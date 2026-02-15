@@ -1,4 +1,4 @@
-"""Chunker: chunks have metadata and overlap."""
+"""Чанкер: чанки имеют метаданные и перекрытие."""
 import pytest
 
 from app.rag.ingest.chunker import chunk_text, chunk_document
@@ -27,7 +27,7 @@ def test_chunk_text_single_chunk():
 
 
 def test_chunk_text_multiple_with_overlap():
-    # 100 chars, chunk_size=30, overlap=10 -> next start = 30-10=20
+    # 100 символов, chunk_size=30, overlap=10 -> следующий start = 30-10=20
     text = "a" * 100
     chunks = chunk_text(text, doc_id="d1", title="T", chunk_size=30, overlap=10)
     assert len(chunks) >= 2

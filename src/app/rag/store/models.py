@@ -1,9 +1,9 @@
-"""Pydantic models for chunks and document metadata. chunk_id format: doc:{doc_id}#chunk:{chunk_index}."""
+"""Pydantic-модели для чанков и метаданных документов. Формат chunk_id: doc:{doc_id}#chunk:{chunk_index}."""
 from pydantic import BaseModel, ConfigDict, Field
 
 
 class DocumentMeta(BaseModel):
-    """Metadata for a source document."""
+    """Метаданные исходного документа."""
     model_config = ConfigDict(extra="forbid")
 
     doc_id: str
@@ -15,10 +15,10 @@ class DocumentMeta(BaseModel):
 
 
 class ChunkMeta(BaseModel):
-    """Metadata for a single chunk (stored with FAISS)."""
+    """Метаданные одного чанка (хранятся вместе с FAISS)."""
     model_config = ConfigDict(extra="forbid")
 
-    chunk_id: str  # doc:{doc_id}#chunk:{index}
+    chunk_id: str  # doc:{doc_id}#chunk:{index} — формат идентификатора
     doc_id: str
     title: str
     path: str = ""
@@ -30,5 +30,5 @@ class ChunkMeta(BaseModel):
 
 
 def make_chunk_id(doc_id: str, chunk_index: int) -> str:
-    """Build chunk_id in format doc:{doc_id}#chunk:{chunk_index}."""
+    """Собрать chunk_id в формате doc:{doc_id}#chunk:{chunk_index}."""
     return f"doc:{doc_id}#chunk:{chunk_index}"

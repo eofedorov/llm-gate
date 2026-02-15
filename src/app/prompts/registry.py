@@ -4,6 +4,7 @@ from typing import Type
 
 from pydantic import BaseModel
 
+from app.contracts.rag_schemas import AnswerContract
 from app.contracts.schemas import ClassifyV1Out, ExtractV1Out
 
 TEMPLATES_DIR = Path(__file__).resolve().parent / "templates"
@@ -51,6 +52,20 @@ def _registry() -> dict[str, PromptSpec]:
             template_filename="extract_v1.txt",
             system_rules="Отвечай строго JSON по схеме. Никакого текста до или после JSON.",
             output_schema=ExtractV1Out,
+        ),
+        "rag_ask_v1": PromptSpec(
+            name="rag_ask",
+            version="v1",
+            template_filename="rag_ask_v1.txt",
+            system_rules="Respond with valid JSON only, following the given schema. No text before or after the JSON.",
+            output_schema=AnswerContract,
+        ),
+        "rag_ask_strict_v1": PromptSpec(
+            name="rag_ask_strict",
+            version="v1",
+            template_filename="rag_ask_strict_v1.txt",
+            system_rules="Respond with valid JSON only, following the given schema. No text before or after the JSON.",
+            output_schema=AnswerContract,
         ),
     }
 

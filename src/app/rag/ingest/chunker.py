@@ -1,5 +1,8 @@
-"""Chunk text with overlap; attach doc_id, title, path, section, created_at, chunk_index."""
+"""Чанкинг текста с перекрытием; к каждому чанку привязываются doc_id, title, path, section, created_at, chunk_index."""
 from app.rag.store.models import ChunkMeta, make_chunk_id
+from app.settings import Settings
+
+_settings = Settings()
 
 
 def chunk_text(
@@ -11,24 +14,26 @@ def chunk_text(
     document_type: str = "",
     created_at: str = "",
     section: str = "",
-    chunk_size: int = 512,
-    overlap: int = 64,
+    chunk_size: int | None = None,
+    overlap: int | None = None,
 ) -> list[ChunkMeta]:
     """
-    Split text into overlapping chunks. Each chunk gets chunk_id, doc_id, title, path, section, created_at, chunk_index, text.
+    Разбить текст на чанки с перекрытием. У каждого чанка: chunk_id, doc_id, title, path, section, created_at, chunk_index, text.
     """
     if not text or not doc_id:
         return []
-    if overlap >= chunk_size:
-        overlap = max(0, chunk_size - 1)
+    cs = chunk_size if chunk_size is not None else _settings.rag_chunk_size
+    ov = overlap if overlap is not None else _settings.rag_chunk_overlap
+    if ov >= cs:
+        ov = max(0, cs - 1)
     chunks: list[ChunkMeta] = []
     start = 0
     index = 0
     while start < len(text):
-        end = start + chunk_size
+        end = start + cs
         piece = text[start:end]
         if not piece.strip():
-            start = end - overlap
+            start = end - ov
             continue
         chunk_id = make_chunk_id(doc_id, index)
         meta = ChunkMeta(
@@ -44,18 +49,18 @@ def chunk_text(
         )
         chunks.append(meta)
         index += 1
-        start = end - overlap
+        start = end - ov
     return chunks
 
 
 def chunk_document(
     doc: dict,
     *,
-    chunk_size: int = 512,
-    overlap: int = 64,
+    chunk_size: int | None = None,
+    overlap: int | None = None,
 ) -> list[ChunkMeta]:
     """
-    Chunk a single document dict (from loader: doc_id, title, path, document_type, created_at, content).
+    Разбить один документ (dict из loader: doc_id, title, path, document_type, created_at, content) на чанки.
     """
     content = doc.get("content") or ""
     return chunk_text(

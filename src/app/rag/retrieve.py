@@ -1,16 +1,18 @@
-"""Retrieval: query -> embed -> top-k chunks with score and metadata."""
+"""Retrieval: запрос -> эмбеддинг -> top-k чанков с score и метаданными."""
 from typing import Any
 
-from app.rag.ingest.indexer import EMBEDDING_MODEL
 from app.rag.store.faiss_store import FaissStore
+from app.settings import Settings
+
+_settings = Settings()
 
 
 def _get_embedding_model():
     from sentence_transformers import SentenceTransformer
-    return SentenceTransformer(EMBEDDING_MODEL)
+    return SentenceTransformer(_settings.rag_embedding_model)
 
 
-# Module-level cache for the model
+# Кэш модели на уровне модуля
 _model = None
 
 
@@ -23,19 +25,20 @@ def _model_singleton():
 
 def retrieve(
     query: str,
-    k: int = 5,
+    k: int | None = None,
     filters: dict[str, Any] | None = None,
     store: FaissStore | None = None,
 ) -> list[tuple[str, float, dict[str, Any]]]:
     """
-    Encode query, search FAISS, return list of (chunk_id, score, meta).
-    meta includes doc_id, title, path, text, etc.
+    Энкодировать запрос, поиск в FAISS, вернуть список (chunk_id, score, meta).
+    meta содержит doc_id, title, path, text и т.д.
     """
     if not query or not query.strip():
         return []
+    k_val = k if k is not None else _settings.rag_default_k
     s = store if store is not None else FaissStore()
     if not s.load():
         return []
     model = _model_singleton()
     qv = model.encode([query.strip()], show_progress_bar=False).tolist()[0]
-    return s.search(qv, k=k, filters=filters)
+    return s.search(qv, k=k_val, filters=filters)
