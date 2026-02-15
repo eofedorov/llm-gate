@@ -7,15 +7,20 @@ from jinja2 import Environment, FileSystemLoader, select_autoescape
 
 from app.contracts.rag_schemas import AnswerContract
 from app.llm import client as llm_client
-from app.prompts.render import get_schema_description
 from app.rag.formats import normalize_text
 from app.rag.retrieve import retrieve
 
 logger = logging.getLogger(__name__)
 
 RAG_TEMPLATES_DIR = Path(__file__).resolve().parent / "prompts" / "templates"
-RELEVANCE_THRESHOLD = 0.5
+RELEVANCE_THRESHOLD = 0.3  # ниже — не резать ответы, у которых модель поставила умеренную relevance
 INSUFFICIENT_ANSWER = "In the knowledge base there is no answer to this question."
+
+# Жёсткая схема ответа для промпта (как в render.py), чтобы модель не путала формат sources
+RAG_OUTPUT_CONTRACT = """Только этот JSON, без других полей:
+{"answer": "<string>", "confidence": <float 0-1>, "sources": [{"chunk_id": "<string>", "doc_title": "<string>", "quote": "<string>", "relevance": <float 0-1>}, ...], "status": "ok" | "insufficient_context"}"""
+
+REPAIR_SYSTEM = "Преобразуй ответ в валидный JSON по указанной схеме. Выведи только JSON, без пояснений до или после."
 
 
 def _extract_json_from_text(text: str) -> str:
@@ -30,6 +35,7 @@ def _extract_json_from_text(text: str) -> str:
 
 
 def _parse_contract(raw: str) -> AnswerContract | None:
+    """Парсинг и валидация по AnswerContract. Без нормализации — ожидаем валидный JSON."""
     try:
         data = json.loads(raw)
         return AnswerContract.model_validate(data)
@@ -77,7 +83,7 @@ def ask(
 
     context_chunks = _build_context_chunks(chunks)
     template_name = "answer_strict_v1.txt" if strict_mode else "answer_with_citations_v1.txt"
-    output_contract = get_schema_description(AnswerContract)
+    output_contract = RAG_OUTPUT_CONTRACT
 
     env = Environment(
         loader=FileSystemLoader(RAG_TEMPLATES_DIR),
@@ -101,13 +107,23 @@ def ask(
     contract = _parse_contract(parsed)
 
     if contract is None:
-        logger.warning("[RAG ask] JSON parse/validation failed, returning insufficient_context")
-        return AnswerContract(
-            answer=INSUFFICIENT_ANSWER,
-            confidence=0.0,
-            sources=[],
-            status="insufficient_context",
-        )
+        logger.warning("[RAG ask] JSON parse/validation failed, triggering repair. raw_tail=%s", raw_response[-500:] if len(raw_response) > 500 else raw_response)
+        repair_messages = [
+            {"role": "system", "content": REPAIR_SYSTEM + "\n\nСхема:\n" + output_contract},
+            {"role": "user", "content": "Исправь в валидный JSON:\n" + raw_response[:4000]},
+        ]
+        raw_repair = call_llm(repair_messages)
+        parsed_repair = _extract_json_from_text(raw_repair)
+        contract = _parse_contract(parsed_repair)
+        if contract is None:
+            logger.warning("[RAG ask] repair failed, returning insufficient_context")
+            return AnswerContract(
+                answer=INSUFFICIENT_ANSWER,
+                confidence=0.0,
+                sources=[],
+                status="insufficient_context",
+            )
+        logger.info("[RAG ask] ok after repair")
 
     # Optional: force insufficient if mean relevance too low
     if contract.sources and contract.status == "ok":

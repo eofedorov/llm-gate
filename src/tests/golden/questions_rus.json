@@ -1,0 +1,22 @@
+[
+  {"question": "Что делать при Redis eviction и ошибках 409 в корзине?", "expected_doc_ids": ["rb-2026-02-redis-evictions"], "expected_status": "ok"},
+  {"question": "Как исправить backlog Stripe webhook и ошибки invalid signature?", "expected_doc_ids": ["rb-2026-01-stripe-webhook-backlog", "adr-2024-12-stripe-webhooks"], "expected_status": "ok"},
+  {"question": "Elasticsearch кластер red, search-api возвращает 503. Какие шаги митигации?", "expected_doc_ids": ["rb-2025-12-es-cluster-red"], "expected_status": "ok"},
+  {"question": "Rollout Kubernetes завис, поды в CrashLoopBackOff. Как триажировать?", "expected_doc_ids": ["rb-2025-06-k8s-rollout-stuck"], "expected_status": "ok"},
+  {"question": "Postgres пишет too many clients already. Как снизить исчерпание подключений?", "expected_doc_ids": ["rb-2024-11-postgres-conn-exhaustion", "kb-2024-11-runbook-postgres-connection-exhaustion"], "expected_status": "ok"},
+  {"question": "Почему мы выбрали Stripe webhooks как источник истины для статуса платежей?", "expected_doc_ids": ["adr-2024-12-stripe-webhooks"], "expected_status": "ok"},
+  {"question": "Какой формат ключей Redis и политика eviction для корзин?", "expected_doc_ids": ["adr-2025-03-redis-carts"], "expected_status": "ok"},
+  {"question": "Как работают алиасы Elasticsearch при reindex без простоя?", "expected_doc_ids": ["adr-2025-02-es-aliasing"], "expected_status": "ok"},
+  {"question": "Какой режим пула PgBouncer и как сервисы к нему подключаются?", "expected_doc_ids": ["adr-2024-08-pgbouncer", "cl-2025-10-weekly-ops"], "expected_status": "ok"},
+  {"question": "Как запустить checkout-service и cart-service локально с Docker?", "expected_doc_ids": ["ob-2025-05-fastapi-local"], "expected_status": "ok"},
+  {"question": "Какой flow платежей между checkout-service, payment-gateway и Stripe?", "expected_doc_ids": ["ob-2025-04-payments"], "expected_status": "ok"},
+  {"question": "Как получить корзину пользователя через API cart-service?", "expected_doc_ids": ["api-2025-11-cart-v1"], "expected_status": "ok"},
+  {"question": "Какие эндпоинты checkout-service для старта чекаута?", "expected_doc_ids": ["api-2025-11-checkout-v2", "ob-2025-04-payments"], "expected_status": "ok"},
+  {"question": "Что вызвало инцидент Redis OOM и какие follow-up были?", "expected_doc_ids": ["pm-2025-11-redis-evictions", "rb-2026-02-redis-evictions"], "expected_status": "ok"},
+  {"question": "Что в чеклисте прод-деплоя перед релизом?", "expected_doc_ids": ["cl-2025-09-prod-deploy", "cl-2025-10-weekly-ops", "ob-2025-10-cicd-k8s", "ob-2025-05-fastapi-local", "rb-2026-02-redis-evictions", "rb-2026-01-stripe-webhook-backlog"], "expected_status": "ok"},
+  {"question": "Какая столица Франции и её население?", "expected_doc_ids": [], "expected_status": "insufficient_context"},
+  {"question": "Как настроить MySQL репликацию для read replicas?", "expected_doc_ids": [], "expected_status": "insufficient_context"},
+  {"question": "Какой лучший рецепт шоколадного торта?", "expected_doc_ids": [], "expected_status": "insufficient_context"},
+  {"question": "Объясните квантовую запутанность простыми словами.", "expected_doc_ids": [], "expected_status": "insufficient_context"},
+  {"question": "Какие часы работы офиса в Берлине?", "expected_doc_ids": [], "expected_status": "insufficient_context"}
+]

@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 
 # Project root for default kb path (src/app/api -> 3 parents to src, 4 to project root)
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent.parent
-DEFAULT_KB_PATH = _PROJECT_ROOT / "data" / "knowledge_base.json"
+DEFAULT_KB_PATH = _PROJECT_ROOT / "data"
 
 
 class IngestResponse(BaseModel):
@@ -42,7 +42,7 @@ class AskRequestBody(BaseModel):
 
 @router.post("/ingest", response_model=IngestResponse)
 def post_ingest():
-    """Index documents from knowledge_base.json into FAISS. Returns stats."""
+    """Index documents from data/ (all *.json) into FAISS. Returns stats."""
     logger.info("[RAG] POST /ingest starting")
     result = run_ingestion(kb_path=DEFAULT_KB_PATH)
     logger.info("[RAG] POST /ingest done docs=%s chunks=%s duration_ms=%s", result.get("docs_indexed"), result.get("chunks_indexed"), result.get("duration_ms"))

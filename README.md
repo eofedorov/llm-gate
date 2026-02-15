@@ -85,11 +85,11 @@ flowchart LR
   Gen --> AskEP
 ```
 
-- `POST /rag/ingest` — индексация документов из `data/knowledge_base.json` в FAISS (ответ: `docs_indexed`, `chunks_indexed`, `duration_ms`)
+- `POST /rag/ingest` — индексация документов из `data/` (все `*.json` с массивом `documents`) в FAISS (ответ: `docs_indexed`, `chunks_indexed`, `duration_ms`)
 - `GET /rag/search?q=...&k=5` — поиск чанков по запросу
 - `POST /rag/ask` — ответ по контракту с цитатами (body: `question`, `k`, `filters?`, `strict_mode`)
 
-Перед поиском и ответами нужно один раз вызвать `POST /rag/ingest`.
+Перед поиском и ответами нужно один раз вызвать `POST /rag/ingest`. В `data/` могут лежать несколько файлов (например `knowledge_base.json`, `knowledge_base_rus.json`) — все подхватываются при индексации.
 
 ## Конфигурация
 
@@ -101,4 +101,4 @@ flowchart LR
 pytest
 ```
 
-Из корня репозитория; `pythonpath` и `testpaths` заданы в `pyproject.toml`. Медленные тесты (ingest + retrieval): `pytest -m "not slow"` — без них.
+Из корня репозитория; `pythonpath` и `testpaths` заданы в `pyproject.toml`. Golden set в одном тесте: один ingest из `data/`, затем проверки по английскому (`questions.json`) и русскому (`questions_rus.json`) наборам (15+5 вопросов каждый). Медленные тесты (ingest + retrieval) можно отключить: `pytest -m "not slow"`. Предупреждения SWIG (faiss) в pytest отфильтрованы в `pyproject.toml`.

@@ -7,8 +7,7 @@ from app.rag.ingest.loader import load_documents
 from app.rag.store.faiss_store import FaissStore, metadata_from_chunk
 from app.rag.store.models import ChunkMeta
 
-EMBEDDING_MODEL = "sentence-transformers/all-MiniLM-L6-v2"
-
+EMBEDDING_MODEL = "intfloat/multilingual-e5-small"
 
 def _get_embedding_model():
     from sentence_transformers import SentenceTransformer
@@ -18,8 +17,8 @@ def _get_embedding_model():
 def run_ingestion(
     kb_path: Path | str | None = None,
     index_dir: Path | str | None = None,
-    chunk_size: int = 256,
-    overlap: int = 32,
+    chunk_size: int = 512,
+    overlap: int = 64,
 ) -> dict[str, int | float]:
     """
     Load knowledge base -> chunk -> embed -> save to FAISS.
