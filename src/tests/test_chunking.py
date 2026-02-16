@@ -1,6 +1,4 @@
 """Чанкер: чанки имеют метаданные и перекрытие."""
-import pytest
-
 from app.rag.ingest.chunker import chunk_text, chunk_document
 from app.rag.store.models import make_chunk_id
 

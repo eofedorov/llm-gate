@@ -134,10 +134,6 @@ def render(spec: PromptSpec, context: RenderContext) -> tuple[str, str]:
     Собрать сообщения для LLM: (system_message, user_message).
     Шаблон рендерится с контекстом; output_contract подставляется в шаблон.
     """
-    if not context.output_contract and spec.output_schema:
-        context.output_contract = get_schema_description(spec.output_schema)
-        logger.debug("render output_contract built from schema %s", spec.output_schema.__name__)
-
     env = Environment(
         loader=FileSystemLoader(TEMPLATES_DIR),
         autoescape=select_autoescape(default=False),

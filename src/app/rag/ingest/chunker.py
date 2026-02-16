@@ -20,7 +20,7 @@ def chunk_text(
     """
     Разбить текст на чанки с перекрытием. У каждого чанка: chunk_id, doc_id, title, path, section, created_at, chunk_index, text.
     """
-    if not text or not doc_id:
+    if not doc_id:
         return []
     cs = chunk_size if chunk_size is not None else _settings.rag_chunk_size
     ov = overlap if overlap is not None else _settings.rag_chunk_overlap

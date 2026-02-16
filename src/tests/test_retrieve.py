@@ -4,20 +4,13 @@ from pathlib import Path
 
 import pytest
 
-try:
-    from sentence_transformers import SentenceTransformer  # noqa: F401
-    HAS_SENTENCE_TRANSFORMERS = True
-except ImportError:
-    HAS_SENTENCE_TRANSFORMERS = False
-
 from app.rag.ingest.indexer import run_ingestion
 from app.rag.retrieve import retrieve
-from app.rag.store.faiss_store import FaissStore
+from app.rag.store.faiss_store import FaissStore, INDEX_FILE, METADATA_FILE
 
 
 def test_retrieve_without_index_returns_empty():
     """При отсутствии индекса retrieve возвращает пустой список."""
-    # Временная директория без индекса
     with tempfile.TemporaryDirectory() as tmp:
         store = FaissStore(index_dir=tmp)
         results = retrieve("Redis cache bypass", k=3, store=store)
@@ -25,11 +18,18 @@ def test_retrieve_without_index_returns_empty():
 
 
 @pytest.mark.slow
-@pytest.mark.skipif(not HAS_SENTENCE_TRANSFORMERS, reason="sentence-transformers not installed")
 def test_retrieve_after_ingest_returns_chunks():
-    """Полная индексация, затем retrieve; должны вернуться чанки с метаданными."""
-    run_ingestion()
-    results = retrieve("Redis evictions cart staleness", k=3)
+    """Индексация в tmp → проверка, что индекс и метаданные на диске → retrieve возвращает чанки."""
+    with tempfile.TemporaryDirectory() as tmp:
+        tmp_path = Path(tmp)
+        run_ingestion(index_dir=tmp_path)
+        index_file = tmp_path / INDEX_FILE
+        meta_file = tmp_path / METADATA_FILE
+        assert index_file.exists() and index_file.stat().st_size > 0
+        assert meta_file.exists() and meta_file.stat().st_size > 0
+
+        store = FaissStore(index_dir=tmp_path)
+        results = retrieve("Redis evictions cart staleness", k=3, store=store)
     assert len(results) > 0
     for chunk_id, score, meta in results:
         assert chunk_id.startswith("doc:")

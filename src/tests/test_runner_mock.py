@@ -1,6 +1,4 @@
 """Runner с замоканным LLM: happy path, repair path, оба невалидны."""
-import pytest
-
 from app.services.runner import run
 
 

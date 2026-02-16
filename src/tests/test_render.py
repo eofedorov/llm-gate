@@ -1,6 +1,4 @@
 """Проверка рендера: шаблон подставляет параметры, важные блоки не теряются."""
-import pytest
-
 from app.contracts.schemas import ClassifyV1Out, ExtractV1Out
 from app.prompts.registry import get_prompt
 from app.prompts.render import RenderContext, get_schema_description, render

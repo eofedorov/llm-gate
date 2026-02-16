@@ -39,8 +39,6 @@ class FaissStore:
         import numpy as np
 
         self._ensure_dir()
-        if not vectors:
-            return
         arr = np.array(vectors, dtype=np.float32)
         dim = arr.shape[1]
         index = faiss.IndexFlatIP(dim)  # скалярное произведение для нормализованных векторов
@@ -55,12 +53,18 @@ class FaissStore:
         self._dim = dim
 
     def load(self) -> bool:
-        """Загрузить индекс и метаданные с диска. Возвращает True при успехе."""
+        """Загрузить индекс и метаданные с диска. Возвращает True при успехе.
+        По дефолтному пути при отсутствии индекса — FileNotFoundError (fail fast).
+        """
         import faiss
 
         path = self._dir / INDEX_FILE
         meta_path = self._dir / METADATA_FILE
         if not path.exists() or not meta_path.exists():
+            if self._dir.resolve() == _index_dir().resolve():
+                raise FileNotFoundError(
+                    f"FAISS index not found at {self._dir}. Run ingestion (e.g. POST /ingest) first."
+                )
             return False
         self._index = faiss.read_index(str(path))
         self._metadata = json.loads(meta_path.read_text(encoding="utf-8"))

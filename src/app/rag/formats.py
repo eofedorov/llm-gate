@@ -7,8 +7,6 @@ def normalize_text(text: str) -> str:
     Нормализация текста: схлопнуть пробелы, trim, убрать лишние переносы строк.
     Используется перед чанкингом и при подготовке контекста для LLM.
     """
-    if not text or not isinstance(text, str):
-        return ""
     t = text.strip()
     t = re.sub(r"[ \t]+", " ", t)
     t = re.sub(r"\n{3,}", "\n\n", t)
@@ -17,8 +15,6 @@ def normalize_text(text: str) -> str:
 
 def truncate_preview(text: str, max_chars: int = 300) -> str:
     """Обрезать текст для превью результата поиска."""
-    if not text:
-        return ""
     normalized = normalize_text(text)
     if len(normalized) <= max_chars:
         return normalized

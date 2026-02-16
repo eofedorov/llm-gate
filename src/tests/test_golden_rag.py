@@ -8,12 +8,6 @@ from pathlib import Path
 
 import pytest
 
-try:
-    from sentence_transformers import SentenceTransformer  # noqa: F401
-    HAS_SENTENCE_TRANSFORMERS = True
-except ImportError:
-    HAS_SENTENCE_TRANSFORMERS = False
-
 from app.rag.ask_service import ask
 from app.rag.ingest.indexer import run_ingestion
 from app.rag.retrieve import retrieve
@@ -47,7 +41,6 @@ def store(index_dir):
     return FaissStore(index_dir=index_dir)
 
 
-@pytest.mark.skipif(not HAS_SENTENCE_TRANSFORMERS, reason="sentence-transformers not installed")
 def test_golden_retrieve_ok_questions(store):
     """По всем questions*.json: каждый ok-вопрос даёт retrieval с чанком из expected_doc_ids."""
     golden_files = _golden_question_files()

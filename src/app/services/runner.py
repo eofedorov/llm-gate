@@ -90,7 +90,7 @@ def run(
     )
 
     # --- Подсчёт токенов (до вызова) ---
-    prompt_tokens = count_tokens(messages, _settings.llm_model)
+    prompt_tokens = count_tokens(messages)
     if prompt_tokens > 0:
         logger.info("[Tokenizer] prompt_tokens=%d model=%s", prompt_tokens, _settings.llm_model)
 

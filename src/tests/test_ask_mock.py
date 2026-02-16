@@ -1,7 +1,4 @@
 """Ask service: замоканный LLM возвращает валидный AnswerContract; при отсутствии контекста — insufficient."""
-import pytest
-
-from app.contracts.rag_schemas import AnswerContract
 from app.rag.ask_service import ask
 
 

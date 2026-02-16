@@ -50,15 +50,3 @@ def test_acceptance_each_returns_valid_json(input_text: str, expected_label: str
     assert 0 <= data["confidence"] <= 1
     assert "rationale" in data
     assert data["label"] == expected_label
-
-
-def test_acceptance_at_least_8_correct_classification():
-    """При прогоне всех 10 кейсов с mock'ом все 10 должны быть валидны и с правильной меткой."""
-    correct = 0
-    for input_text, expected_label in ACCEPTANCE_CASES:
-        mock = _make_mock_returning_label(expected_label)
-        result = run("classify", "v1", "Classify", input_text, _call_llm=mock)
-        assert result["ok"] is True
-        if result["data"]["label"] == expected_label:
-            correct += 1
-    assert correct >= 8, f"Expected at least 8 correct, got {correct}"
