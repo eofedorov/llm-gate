@@ -25,6 +25,12 @@ services:
       - "6334:6334"
     volumes:
       - qdrant_data:/qdrant/storage
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c \"exec 3<>/dev/tcp/127.0.0.1/6333 && echo -e 'GET /healthz HTTP/1.1\\r\\nHost: localhost\\r\\nConnection: close\\r\\n\\r\\n' >&3 && grep -q '200' <&3 || exit 1\""]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
     networks:
       - llm_net
 
@@ -34,6 +40,8 @@ services:
       dockerfile: Dockerfile.mcp
     ports:
       - "8001:8001"
+    volumes:
+      - ./data:/app/data
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://127.0.0.1:8001/health || exit 1"]
       interval: 10s
@@ -44,12 +52,13 @@ services:
       postgres:
         condition: service_healthy
       qdrant:
-        condition: service_started
+        condition: service_healthy
     environment:
       DATABASE_URL: postgresql://llm_gate_service:CHANGE_ME_service_password@postgres:5432/llm_gate
       QDRANT_URL: http://qdrant:6333
       QDRANT_COLLECTION: kb_chunks_v1
       RAG_EMBEDDING_MODEL: intfloat/multilingual-e5-small
+      KB_PATH: /app/data/docs
     networks:
       - llm_net
 
