@@ -7,11 +7,20 @@ from uuid import UUID
 
 from app.contracts.rag_schemas import AnswerContract
 from app.llm import client as llm_client
+from app.prompts.render import get_schema_description
 from app.mcp.client.mcp_client import call_tool as mcp_call_tool
 from app.mcp.client.mcp_client import list_tools as mcp_list_tools
 from app.mcp.server.policy import MAX_TOOL_CALLS_PER_REQUEST
 
 logger = logging.getLogger(__name__)
+
+
+def _format_tool_error(exc: BaseException) -> str:
+    """Читаемое сообщение об ошибке (в т.ч. из ExceptionGroup)."""
+    if isinstance(exc, BaseExceptionGroup) and exc.exceptions:
+        return _format_tool_error(exc.exceptions[0])
+    return str(exc)
+
 
 SYSTEM_PROMPT = """Ты отвечаешь на вопросы по базе знаний. Обязательно используй инструменты kb_search и kb_get_chunk для поиска и получения текста чанков.
 Если по результатам поиска данных недостаточно для ответа — верни status "insufficient_context".
@@ -19,6 +28,8 @@ SYSTEM_PROMPT = """Ты отвечаешь на вопросы по базе з�
 Не добавляй текст до или после JSON."""
 
 INSUFFICIENT_ANSWER = "In the knowledge base there is no answer to this question."
+
+REPAIR_SYSTEM = "Преобразуй ответ в валидный JSON по указанной схеме. Выведи только JSON, без пояснений до или после."
 
 
 def _extract_json_from_text(text: str) -> str:
@@ -90,7 +101,19 @@ def ask(
             if parsed is not None:
                 logger.info("[AGENT] done status=%s", parsed.status)
                 return parsed
-            logger.info("[AGENT] parse failed -> insufficient_context")
+            # Repair: один проход LLM для исправления невалидного JSON (как в runner)
+            output_contract = get_schema_description(AnswerContract)
+            repair_messages = [
+                {"role": "system", "content": REPAIR_SYSTEM + "\n\nСхема:\n" + output_contract[:1500]},
+                {"role": "user", "content": "Исправь в валидный JSON:\n" + (content or "")[:4000]},
+            ]
+            logger.info("[AGENT] parse failed -> repair pass")
+            raw_repair = llm_client.call_llm(repair_messages)
+            parsed = _parse_answer(raw_repair)
+            if parsed is not None:
+                logger.info("[AGENT] done after repair status=%s", parsed.status)
+                return parsed
+            logger.info("[AGENT] repair failed -> insufficient_context")
             return AnswerContract(
                 answer=INSUFFICIENT_ANSWER,
                 confidence=0.0,
@@ -126,9 +149,10 @@ def ask(
                 logger.info("[AGENT] tool_call name=%s args=%s", name, list(args.keys()) if args else [])
                 result = mcp_call_tool(name, args, mcp_url=mcp_url, run_id=run_id)
                 result_str = json.dumps(result, ensure_ascii=False)
-            except Exception as e:
-                logger.exception("[AGENT] tool_call failed name=%s: %s", name, e)
-                result_str = json.dumps({"error": str(e)}, ensure_ascii=False)
+            except (Exception, BaseExceptionGroup) as e:
+                msg = _format_tool_error(e)
+                logger.error("[AGENT] tool_call failed name=%s: %s", name, msg)
+                result_str = json.dumps({"error": msg}, ensure_ascii=False)
             messages.append({
                 "role": "tool",
                 "tool_call_id": tc.id,
