@@ -23,14 +23,15 @@ class MCPConnectionError(Exception):
 
 
 def _run_async(coro):
-    """Выполнить корутину из синхронного кода."""
-    try:
-        loop = asyncio.get_event_loop()
-    except RuntimeError as e:
-        logger.error("asyncio get_event_loop failed: %s", e)
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-    return loop.run_until_complete(coro)
+    """Выполнить корутину из синхронного кода (любой поток)."""
+    return asyncio.run(coro)
+
+
+def _format_mcp_error(exc: BaseException) -> str:
+    """Читаемое сообщение об ошибке (в т.ч. из ExceptionGroup)."""
+    if isinstance(exc, BaseExceptionGroup) and exc.exceptions:
+        return _format_mcp_error(exc.exceptions[0])
+    return str(exc)
 
 
 def _raise_if_connection_error(url: str, exc: BaseException) -> None:
@@ -63,7 +64,7 @@ def list_tools(mcp_url: str | None = None) -> list[dict[str, Any]]:
     try:
         mcp_tools = _run_async(_list())
     except (httpx.ConnectError, BaseExceptionGroup) as e:
-        logger.error("MCP connection failed (list_tools) url=%s: %s", url, e)
+        logger.error("MCP connection failed (list_tools) url=%s: %s", url, _format_mcp_error(e))
         _raise_if_connection_error(url, e)
         raise
     openai_tools: list[dict[str, Any]] = []
@@ -128,6 +129,11 @@ def call_tool(
     try:
         return _run_async(_call())
     except (httpx.ConnectError, BaseExceptionGroup) as e:
-        logger.error("MCP connection failed (call_tool) url=%s name=%s: %s", url, name, e)
+        logger.error(
+            "MCP connection failed (call_tool) url=%s name=%s: %s",
+            url,
+            name,
+            _format_mcp_error(e),
+        )
         _raise_if_connection_error(url, e)
         raise

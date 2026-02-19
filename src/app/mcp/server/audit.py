@@ -27,7 +27,7 @@ def log_tool_call(
         run_id,
         extra={
             "tool_name": tool_name,
-            "args": args,
+            "tool_args": args,
             "result_meta": result_meta,
             "status": status,
             "error_message": error_message,
