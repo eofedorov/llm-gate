@@ -1,0 +1,12 @@
+# Оркестратор (FastAPI): лёгкий образ без sentence-transformers/qdrant.
+# Сборка: docker build -t llm-gate-orchestrator -f Dockerfile.orchestrator .
+# RAG: /ingest и /search работают через вызовы MCP (нужен запущенный MCP-сервер).
+FROM python:slim
+WORKDIR /app
+RUN mkdir -p src/app && touch src/app/__init__.py
+COPY pyproject.toml ./
+COPY src ./src
+RUN pip install --no-cache-dir -e .
+ENV PYTHONPATH=/app/src
+EXPOSE 8000
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]

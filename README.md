@@ -6,7 +6,7 @@ AI-шлюз для инженерных задач: классификация/�
 
 - Python 3.10+
 - FastAPI, Pydantic, Jinja2, OpenAI API
-- RAG: FAISS (v2, legacy), Qdrant (v3), sentence-transformers
+- RAG: Qdrant, sentence-transformers (только в образе MCP)
 - Инфраструктура: Docker Compose (Postgres 16, Qdrant)
 - Сборка: hatchling
 
@@ -63,11 +63,19 @@ docker compose up -d
 
 ## Установка
 
+**Только оркестратор** (локально, без RAG-зависимостей; `/rag/ingest` и `/rag/search` вызывают MCP):
+
 ```powershell
 pip install -e ".[dev]"
 ```
 
-Из корня репозитория. Для тестов с индексацией и golden set нужны `faiss-cpu` и `sentence-transformers` (уже в зависимостях).
+**Полный стек** (оркестратор + тесты с индексацией и golden set, локальный RAG):
+
+```powershell
+pip install -e ".[dev,mcp]"
+```
+
+Два приложения собираются и запускаются независимо: оркестратор не тянет sentence-transformers/qdrant; MCP-сервер — отдельный образ с `.[mcp]`.
 
 ## Запуск
 
@@ -86,6 +94,23 @@ uvicorn app.main:app --reload --app-dir src
 
 - API: http://127.0.0.1:8000
 - Документация: http://127.0.0.1:8000/docs
+
+### Сборка Docker (два образа)
+
+**Оркестратор** (лёгкий образ, без PyTorch/sentence-transformers):
+
+```powershell
+docker build -t llm-gate-orchestrator -f Dockerfile.orchestrator .
+```
+
+**MCP-сервер** (образ с RAG-зависимостями):
+
+```powershell
+docker build -t llm-gate-mcp-deps -f Dockerfile.mcp.deps .
+docker build -t llm-gate-mcp -f Dockerfile.mcp .
+```
+
+Оркестратор для `/rag/ingest` и `/rag/search` обращается к MCP по `MCP_SERVER_URL`; контейнеры можно поднимать и масштабировать независимо.
 
 ## Эндпоинты
 
@@ -120,7 +145,7 @@ flowchart LR
     Load[loader]
     Chunk[chunker]
     Embed[embedding]
-    Store[FAISS store]
+    Store[Qdrant store]
     Load --> Chunk --> Embed --> Store
   end
   subgraph api [API]
@@ -136,7 +161,7 @@ flowchart LR
   Gen --> AskEP
 ```
 
-- `POST /rag/ingest` — индексация документов из `data/` (все `*.json` с массивом `documents`) в FAISS (ответ: `docs_indexed`, `chunks_indexed`, `duration_ms`)
+- `POST /rag/ingest` — индексация документов из `data/` (все `*.json` с массивом `documents`) в Qdrant (ответ: `docs_indexed`, `chunks_indexed`, `duration_ms`)
 - `GET /rag/search?q=...&k=5` — поиск чанков по запросу
 - `POST /rag/ask` — ответ по контракту с цитатами (body: `question`, `k`, `filters?`, `strict_mode`)
 
@@ -170,4 +195,4 @@ flowchart LR
 pytest
 ```
 
-Из корня репозитория; `pythonpath` и `testpaths` заданы в `pyproject.toml`. Golden set в одном тесте: один ingest из `data/`, затем проверки по английскому (`questions.json`) и русскому (`questions_rus.json`) наборам (15+5 вопросов каждый). Медленные тесты (ingest + retrieval) можно отключить: `pytest -m "not slow"`. Предупреждения SWIG (faiss) в pytest отфильтрованы в `pyproject.toml`.
+Из корня репозитория; `pythonpath` и `testpaths` заданы в `pyproject.toml`. Golden set в одном тесте: один ingest из `data/`, затем проверки по английскому (`questions.json`) и русскому (`questions_rus.json`) наборам (15+5 вопросов каждый). Медленные тесты (ingest + retrieval) можно отключить: `pytest -m "not slow"`. Для них нужна установка с `.[dev,mcp]`.
