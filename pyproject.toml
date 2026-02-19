@@ -21,6 +21,7 @@ dependencies = [
 
 [project.optional-dependencies]
 mcp = [
+    "torch>=2.0.0",
     "sentence-transformers>=5.2.0",
     "qdrant-client>=1.16.0",
 ]
