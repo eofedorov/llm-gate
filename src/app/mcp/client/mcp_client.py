@@ -4,6 +4,7 @@ import json
 import logging
 from typing import Any
 
+import httpx
 from mcp import ClientSession
 from mcp.client.streamable_http import streamable_http_client
 
@@ -12,14 +13,34 @@ from app.settings import Settings
 logger = logging.getLogger(__name__)
 
 
+class MCPConnectionError(Exception):
+    """MCP-сервер недоступен (не запущен или сеть недоступна)."""
+
+    def __init__(self, url: str, cause: Exception | None = None):
+        self.url = url
+        self.cause = cause
+        super().__init__(f"MCP-сервер недоступен: {url}. Убедитесь, что сервер запущен.")
+
+
 def _run_async(coro):
     """Выполнить корутину из синхронного кода."""
     try:
         loop = asyncio.get_event_loop()
-    except RuntimeError:
+    except RuntimeError as e:
+        logger.error("asyncio get_event_loop failed: %s", e)
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
     return loop.run_until_complete(coro)
+
+
+def _raise_if_connection_error(url: str, exc: BaseException) -> None:
+    """Перевести ошибку соединения с MCP в MCPConnectionError."""
+    if isinstance(exc, httpx.ConnectError):
+        raise MCPConnectionError(url, exc) from exc
+    if isinstance(exc, BaseExceptionGroup):
+        for e in exc.exceptions:
+            if isinstance(e, httpx.ConnectError):
+                raise MCPConnectionError(url, e) from exc
 
 
 def list_tools(mcp_url: str | None = None) -> list[dict[str, Any]]:
@@ -39,7 +60,12 @@ def list_tools(mcp_url: str | None = None) -> list[dict[str, Any]]:
                 response = await session.list_tools()
                 return list(response.tools) if response.tools else []
 
-    mcp_tools = _run_async(_list())
+    try:
+        mcp_tools = _run_async(_list())
+    except (httpx.ConnectError, BaseExceptionGroup) as e:
+        logger.error("MCP connection failed (list_tools) url=%s: %s", url, e)
+        _raise_if_connection_error(url, e)
+        raise
     openai_tools: list[dict[str, Any]] = []
     for t in mcp_tools:
         name = getattr(t, "name", None) or ""
@@ -94,8 +120,14 @@ def call_tool(
                     text = first.text
                     try:
                         return json.loads(text)
-                    except json.JSONDecodeError:
+                    except json.JSONDecodeError as e:
+                        logger.error("MCP tool response JSON decode error: %s", e)
                         return {"result": text}
                 return {}
 
-    return _run_async(_call())
+    try:
+        return _run_async(_call())
+    except (httpx.ConnectError, BaseExceptionGroup) as e:
+        logger.error("MCP connection failed (call_tool) url=%s name=%s: %s", url, name, e)
+        _raise_if_connection_error(url, e)
+        raise

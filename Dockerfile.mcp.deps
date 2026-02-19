@@ -5,4 +5,4 @@ FROM python:slim
 WORKDIR /app
 RUN mkdir -p src/app && touch src/app/__init__.py
 COPY pyproject.toml ./
-RUN pip install --no-cache-dir -e .
+RUN pip install --no-cache-dir -e ".[mcp]"

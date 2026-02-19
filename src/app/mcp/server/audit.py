@@ -38,7 +38,8 @@ def log_tool_call(
         return
     try:
         uid = UUID(str(run_id)) if isinstance(run_id, str) else run_id
-    except (ValueError, TypeError):
+    except (ValueError, TypeError) as e:
+        logger.error("invalid run_id for audit: %s", e)
         return
     try:
         pool = get_pool()
@@ -55,4 +56,4 @@ def log_tool_call(
             )
             conn.commit()
     except Exception as e:
-        logger.warning("audit db log_tool_call failed: %s", e)
+        logger.error("audit db log_tool_call failed: %s", e)
