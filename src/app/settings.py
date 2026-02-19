@@ -34,3 +34,4 @@ class Settings(BaseSettings):
     qdrant_url: str = ""
     qdrant_collection: str = "kb_chunks_v1"
     mcp_server_url: str = ""
+    mcp_timeout: int = 600

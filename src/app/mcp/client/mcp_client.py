@@ -22,6 +22,14 @@ class MCPConnectionError(Exception):
         super().__init__(f"MCP-сервер недоступен: {url}. Убедитесь, что сервер запущен.")
 
 
+class MCPToolError(Exception):
+    """Ошибка выполнения инструмента MCP (timeout, ошибка на сервере и т.д.)."""
+
+    def __init__(self, message: str, tool_name: str = ""):
+        self.tool_name = tool_name
+        super().__init__(message)
+
+
 def _run_async(coro):
     """Выполнить корутину из синхронного кода (любой поток)."""
     return asyncio.run(coro)
@@ -54,8 +62,11 @@ def list_tools(mcp_url: str | None = None) -> list[dict[str, Any]]:
         logger.warning("mcp_server_url not set, returning empty tools")
         return []
 
+    _timeout = float(Settings().mcp_timeout)
+    _client = httpx.AsyncClient(timeout=_timeout)
+
     async def _list():
-        async with streamable_http_client(url) as (read_stream, write_stream, _):
+        async with streamable_http_client(url, http_client=_client) as (read_stream, write_stream, _):
             async with ClientSession(read_stream, write_stream) as session:
                 await session.initialize()
                 response = await session.list_tools()
@@ -102,15 +113,19 @@ def call_tool(
     if run_id is not None:
         args["run_id"] = str(run_id)
 
+    _timeout = float(Settings().mcp_timeout)
+    _client = httpx.AsyncClient(timeout=_timeout)
+
     async def _call():
-        async with streamable_http_client(url) as (read_stream, write_stream, _):
+        async with streamable_http_client(url, http_client=_client) as (read_stream, write_stream, _):
             async with ClientSession(read_stream, write_stream) as session:
                 await session.initialize()
                 result = await session.call_tool(name, arguments=args)
                 if getattr(result, "isError", False):
                     err = getattr(result, "content", [])
                     err_text = err[0].text if err and hasattr(err[0], "text") else "unknown error"
-                    raise RuntimeError(f"MCP tool error: {err_text}")
+                    logger.error("MCP tool error (call_tool) name=%s: %s", name, err_text)
+                    raise MCPToolError(err_text, tool_name=name)
                 if hasattr(result, "structuredContent") and result.structuredContent is not None:
                     return result.structuredContent
                 content = getattr(result, "content", []) or []
