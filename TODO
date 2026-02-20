@@ -1,3 +1,2 @@
 расмотреть guidance для промптов
 в knowledge_base добавить “шум” (таблицы, логи, stack traces) для более жёсткого теста RAG.
-перейти на Qdrant в Docker
