@@ -24,10 +24,11 @@ FROM deps AS app
 
 COPY shared/common ./shared/common
 COPY shared/db ./shared/db
+COPY shared/audit ./shared/audit
 COPY apps/mcp_server/src ./src
 
 RUN --mount=type=cache,target=/root/.cache/pip \
-    pip install -e ./shared/common -e ./shared/db
+    pip install -e ./shared/common -e ./shared/db -e ./shared/audit
 
 ENV PYTHONPATH=/app/src
 # Use pre-downloaded model only; no Hugging Face network calls at runtime.

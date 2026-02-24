@@ -15,3 +15,4 @@ class Settings(BaseAppSettings):
     mcp_server_url: str = ""
     mcp_timeout: int = 600
     datastore_url: str = ""
+    audit_service_url: str = ""

@@ -1,0 +1,57 @@
+{% extends "audit/_layout.html" %}
+{% block title %}Run Explorer{% endblock %}
+{% block content %}
+<h1>Run Explorer</h1>
+<form method="get" action="/audit/runs" class="audit-filters" style="display: flex; flex-wrap: wrap; gap: 0.75rem; align-items: center; margin-bottom: 1rem;">
+  <label>
+    <span style="color: var(--muted); margin-right: 0.5rem;">Status</span>
+    <select name="status" style=" background: var(--card); border: 1px solid var(--border); color: var(--text); padding: 0.35rem 0.5rem; border-radius: 6px;">
+      <option value="">—</option>
+      <option value="ok" {% if filter_status == 'ok' %}selected{% endif %}>ok</option>
+      <option value="error" {% if filter_status == 'error' %}selected{% endif %}>error</option>
+      <option value="insufficient" {% if filter_status == 'insufficient' %}selected{% endif %}>insufficient</option>
+    </select>
+  </label>
+  <label>
+    <span style="color: var(--muted); margin-right: 0.5rem;">Service</span>
+    <input type="text" name="service" value="{{ filter_service or '' }}" placeholder="gateway" style="background: var(--card); border: 1px solid var(--border); color: var(--text); padding: 0.35rem 0.5rem; border-radius: 6px; width: 120px;">
+  </label>
+  <label>
+    <span style="color: var(--muted); margin-right: 0.5rem;">Limit</span>
+    <input type="number" name="limit" value="{{ limit }}" min="10" max="500" style="background: var(--card); border: 1px solid var(--border); color: var(--text); padding: 0.35rem 0.5rem; border-radius: 6px; width: 70px;">
+  </label>
+  <button type="submit" style="padding: 0.35rem 0.75rem; background: var(--accent); color: var(--bg); border: none; border-radius: 6px; cursor: pointer;">Применить</button>
+</form>
+{% if runs %}
+<div style="overflow-x: auto;">
+  <table>
+    <thead>
+      <tr>
+        <th>Timestamp</th>
+        <th>Trace ID</th>
+        <th>Status</th>
+        <th>Duration (ms)</th>
+        <th>Tokens</th>
+        <th>Tool calls</th>
+        <th>Top1 score</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for r in runs %}
+      <tr>
+        <td>{{ r.get('ts', r.get('timestamp', '—')) }}</td>
+        <td><a href="/audit/runs/{{ r.get('trace_id', '') }}" style="color: var(--accent);">{{ r.get('trace_id', '—')[:16] }}…</a></td>
+        <td>{{ r.get('status', '—') }}</td>
+        <td>{{ r.get('duration_ms', '—') }}</td>
+        <td>{{ r.get('tokens_total', r.get('tokens', '—')) }}</td>
+        <td>{{ r.get('tool_calls', '—') }}</td>
+        <td>{{ r.get('top1_score', '—') }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<div class="empty-state">Нет runs за выбранный период или при заданных фильтрах. Убедитесь, что audit-service запущен.</div>
+{% endif %}
+{% endblock %}

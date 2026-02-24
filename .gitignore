@@ -48,9 +48,10 @@ coverage.xml
 *~
 .cursor/
 
-# ——— Docker volumes (Postgres, Qdrant) ———
+# ——— Docker volumes ———
 data/postgres
 data/qdrant
+data/audit
 
 # ——— ОС ———
 .DS_Store

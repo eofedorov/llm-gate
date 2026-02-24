@@ -6,6 +6,7 @@ import json
 import logging
 from typing import Any, TypeVar
 
+from audit import audit_event, audited_span
 from pydantic import BaseModel
 
 from gateway.prompts.render import get_schema_description
@@ -62,6 +63,7 @@ def build_repair_messages(
     ]
 
 
+@audited_span("parse_llm_response_or_repair", kind="llm.call")
 def parse_llm_response_or_repair(
     raw_content: str,
     schema_class: type[T],
@@ -75,11 +77,15 @@ def parse_llm_response_or_repair(
     parsed = extract_json_from_text(raw_content)
     model, err = parse_and_validate(parsed, schema_class)
     if model is not None:
+        audit_event("schema_validation", result="ok")
         return model, None
+    audit_event("schema_validation", result="fail", error=err)
     repair_messages = build_repair_messages(raw_content, schema_class)
     raw_repair = call_llm(repair_messages)
     parsed_repair = extract_json_from_text(raw_repair)
     model_repair, err_repair = parse_and_validate(parsed_repair, schema_class)
     if model_repair is not None:
+        audit_event("repair", attempted=True, success=True)
         return model_repair, None
+    audit_event("repair", attempted=True, success=False, error=err_repair)
     return None, f"first: {err}; repair: {err_repair}"

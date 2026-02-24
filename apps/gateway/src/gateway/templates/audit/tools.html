@@ -1,0 +1,63 @@
+{% extends "audit/_layout.html" %}
+{% block title %}Tools & Policy{% endblock %}
+{% block content %}
+<h1>Tools & Policy</h1>
+<p class="empty-state" style="margin-bottom: 1rem;">Tool latency p95 by tool; tool calls vs success; policy blocks.</p>
+<div class="chart-wrap chart-wrap--with-overlay" style="position: relative;">
+  <canvas id="chart-tools-p95"></canvas>
+  <div id="tools-ts-empty" class="empty-state chart-empty-overlay" style="display: none;">Нет временных рядов.</div>
+</div>
+{% if tools %}
+<div class="chart-wrap" style="height: auto; min-height: 200px;">
+  <table>
+    <thead><tr><th>Tool</th><th>Call count</th><th>p95 (ms)</th><th>Error rate</th></tr></thead>
+    <tbody>
+      {% for t in tools[:15] %}
+      <tr>
+        <td>{{ t.get('tool_name', t.get('name', '—')) }}</td>
+        <td>{{ t.get('call_count', t.get('count', 0)) }}</td>
+        <td>{{ t.get('p95_latency_ms', '—') }}</td>
+        <td>{{ "%.1f"|format( (t.get('error_rate', 0) or 0) * 100 ) }}%</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<div class="empty-state">Нет данных по инструментам.</div>
+{% endif %}
+{% endblock %}
+{% block scripts %}
+<script>
+(function() {
+  const ts = {{ timeseries | tojson | safe }} || {};
+  let labels = ts.labels || [];
+  let datasets = ts.datasets || [];
+  const ctx = document.getElementById('chart-tools-p95');
+  if (!ctx) return;
+  const isEmpty = labels.length === 0 || datasets.length === 0;
+  if (isEmpty) {
+    labels = ['Нет данных'];
+    datasets = [{ label: 'Policy block rate', data: [0] }];
+    var el = document.getElementById('tools-ts-empty');
+    if (el) el.style.display = 'flex';
+  }
+  const colors = ['#58a6ff', '#3fb950', '#f85149'];
+  new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: labels,
+      datasets: datasets.slice(0, 3).map(function(d, i) {
+        return { label: d.label || ('Metric ' + (i+1)), data: d.data || [], borderColor: colors[i % colors.length], fill: false };
+      })
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { position: 'top' } },
+      scales: { x: { display: true }, y: { beginAtZero: true, max: isEmpty ? 1 : undefined } }
+    }
+  });
+})();
+</script>
+{% endblock %}

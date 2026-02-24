@@ -1,11 +1,8 @@
-"""Аудит вызовов инструментов: Python logging и запись в llm.tool_calls (Postgres)."""
-import logging
-from uuid import UUID
+"""Аудит вызовов инструментов через audit-lib (HTTP в audit-service). Реэкспорт и хелперы."""
 
-from db.connection import get_pool
-from db.queries import log_tool_call as db_log_tool_call
+from audit import audit_event
 
-logger = logging.getLogger(__name__)
+__all__ = ["audit_event"]
 
 
 def log_tool_call(
@@ -15,38 +12,19 @@ def log_tool_call(
     status: str = "ok",
     error_message: str | None = None,
     duration_ms: int | None = None,
-    run_id: UUID | str | None = None,
+    run_id: str | None = None,
 ) -> None:
-    if run_id is None:
-        logger.info(
-            "tool_call tool_name=%s status=%s duration_ms=%s",
-            tool_name, status, duration_ms,
-            extra={"tool_name": tool_name, "tool_args": args, "result_meta": result_meta, "status": status, "error_message": error_message, "duration_ms": duration_ms},
-        )
-        return
-    try:
-        uid = UUID(str(run_id)) if isinstance(run_id, str) else run_id
-    except (ValueError, TypeError) as e:
-        logger.error("invalid run_id for audit: %s", e)
-        return
-    logger.info(
-        "tool_call tool_name=%s status=%s duration_ms=%s run_id=%s",
-        tool_name, status, duration_ms, run_id,
-        extra={"tool_name": tool_name, "tool_args": args, "result_meta": result_meta, "status": status, "error_message": error_message, "duration_ms": duration_ms},
-    )
-    try:
-        pool = get_pool()
-        with pool.connection() as conn:
-            db_log_tool_call(
-                conn,
-                run_id=uid,
-                tool_name=tool_name,
-                args=args,
-                result_meta=result_meta,
-                status=status,
-                error_message=error_message,
-                duration_ms=duration_ms,
-            )
-            conn.commit()
-    except Exception as e:
-        logger.error("audit db log_tool_call failed: %s", e)
+    """Отправить событие вызова инструмента в audit-service (для обратной совместимости)."""
+    attrs = {
+        "tool_name": tool_name,
+        "args": args,
+        "result_meta": result_meta,
+        "status": status,
+    }
+    if error_message is not None:
+        attrs["error_message"] = error_message
+    if duration_ms is not None:
+        attrs["duration_ms"] = duration_ms
+    if run_id is not None:
+        attrs["run_id"] = str(run_id)
+    audit_event("tool.call.finish", **attrs)

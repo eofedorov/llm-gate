@@ -8,7 +8,10 @@
       "module": "uvicorn",
       "args": ["gateway.main:app", "--reload", "--host", "127.0.0.1", "--port", "8000"],
       "cwd": "${workspaceFolder}",
-      "env": { "PYTHONPATH": "${workspaceFolder}/apps/gateway/src;${workspaceFolder}/shared/common/src" },
+      "env": {
+        "PYTHONPATH": "${workspaceFolder}/apps/gateway/src;${workspaceFolder}/shared/common/src",
+        "AUDIT_SERVICE_URL": "http://localhost:8003"
+      },
       "console": "integratedTerminal",
       "justMyCode": false
     },
@@ -19,7 +22,10 @@
       "module": "uvicorn",
       "args": ["gateway.main:app", "--host", "127.0.0.1", "--port", "8000"],
       "cwd": "${workspaceFolder}",
-      "env": { "PYTHONPATH": "${workspaceFolder}/apps/gateway/src;${workspaceFolder}/shared/common/src" },
+      "env": {
+        "PYTHONPATH": "${workspaceFolder}/apps/gateway/src;${workspaceFolder}/shared/common/src",
+        "AUDIT_SERVICE_URL": "http://localhost:8003"
+      },
       "console": "integratedTerminal",
       "justMyCode": false
     }

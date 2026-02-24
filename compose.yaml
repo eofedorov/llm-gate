@@ -51,6 +51,22 @@ services:
     networks:
       - llm_net
 
+  audit-service:
+    build:
+      context: .
+      dockerfile: apps/audit_service/Dockerfile
+    ports:
+      - "8003:8003"
+    volumes:
+      - ./data/audit:/app/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://127.0.0.1:8003/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    networks:
+      - llm_net
+
   mcp-server:
     build:
       context: .
@@ -76,6 +92,7 @@ services:
       QDRANT_COLLECTION: kb_chunks_v1
       RAG_EMBEDDING_MODEL: intfloat/multilingual-e5-small
       DATASTORE_URL: http://datastore:8002
+      AUDIT_SERVICE_URL: http://audit-service:8003
     networks:
       - llm_net
 

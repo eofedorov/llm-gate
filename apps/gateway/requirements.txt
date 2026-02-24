@@ -1,5 +1,6 @@
-# Gateway. Install from repo root: pip install -e shared/common -e apps/gateway
+# Gateway. Install from repo root: pip install -e shared/common -e shared/audit -e apps/gateway
 -e shared/common
+-e shared/audit
 fastapi>=0.129.0
 uvicorn[standard]>=0.41.0
 pydantic>=2.12.0

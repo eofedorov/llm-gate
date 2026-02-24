@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}Audit{% endblock %} — LLM Gate</title>
+  <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <style>
+    :root { --bg: #0f1419; --card: #1a2332; --text: #e6edf3; --muted: #8b949e; --accent: #58a6ff; --border: #30363d; --success: #3fb950; --error: #f85149; }
+    * { box-sizing: border-box; }
+    body { font-family: ui-sans-serif, system-ui, sans-serif; background: var(--bg); color: var(--text); line-height: 1.5; margin: 0; padding: 1rem 1.5rem; }
+    .audit-nav { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 1.5rem; padding-bottom: 1rem; border-bottom: 1px solid var(--border); }
+    .audit-nav a { color: var(--muted); text-decoration: none; padding: 0.35rem 0.75rem; border-radius: 6px; }
+    .audit-nav a:hover { color: var(--text); background: var(--card); }
+    .audit-nav a.active { color: var(--accent); font-weight: 500; }
+    h1 { font-size: 1.35rem; margin: 0 0 1rem 0; }
+    .kpi-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 0.75rem; margin-bottom: 1.5rem; }
+    .kpi-tile { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 0.75rem 1rem; }
+    .kpi-tile .label { font-size: 0.8rem; color: var(--muted); }
+    .kpi-tile .value { font-size: 1.25rem; font-weight: 600; }
+    .chart-wrap { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 1rem; margin-bottom: 1rem; max-width: 800px; height: 280px; }
+    .chart-wrap--with-overlay { position: relative; }
+    .chart-empty-overlay { display: none; position: absolute; inset: 0; padding: 2rem; align-items: center; justify-content: center; flex-direction: column; }
+    .empty-state { color: var(--muted); font-size: 0.9rem; text-align: center; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { text-align: left; padding: 0.5rem 0.75rem; border-bottom: 1px solid var(--border); }
+    th { color: var(--muted); font-weight: 500; font-size: 0.85rem; }
+    .timeline { position: relative; padding-left: 1.5rem; border-left: 2px solid var(--border); margin-left: 0.5rem; }
+    .timeline-item { position: relative; padding-bottom: 1rem; }
+    .timeline-item::before { content: ""; position: absolute; left: -1.5rem; top: 0.25rem; width: 8px; height: 8px; border-radius: 50%; background: var(--accent); }
+    .timeline-item .ts { font-size: 0.8rem; color: var(--muted); }
+    .timeline-item .event-type { font-weight: 500; }
+    .timeline-item .attrs { font-size: 0.85rem; color: var(--muted); margin-top: 0.25rem; }
+  </style>
+  {% block head %}{% endblock %}
+</head>
+<body>
+  <nav class="audit-nav">
+    {% for key, href, label in nav %}
+    <a href="{{ href }}" class="{% if audit_active == key %}active{% endif %}">{{ label }}</a>
+    {% endfor %}
+  </nav>
+  {% block content %}{% endblock %}
+  {% block scripts %}{% endblock %}
+</body>
+</html>

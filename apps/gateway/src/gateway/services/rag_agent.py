@@ -3,8 +3,10 @@ Agent loop: вопрос пользователя -> LLM с tools (MCP) -> до 
 """
 import json
 import logging
+from typing import Any
 from uuid import UUID
 
+from audit import audit_event, audited_span
 from common.contracts.rag_schemas import AnswerContract
 from gateway.llm import client as llm_client
 from gateway.mcp.client.mcp_client import call_tool as mcp_call_tool
@@ -15,6 +17,11 @@ from gateway.services.llm_json import parse_llm_response_or_repair
 MAX_TOOL_CALLS_PER_REQUEST = 6
 
 logger = logging.getLogger(__name__)
+
+
+@audited_span("llm.call", kind="llm.call")
+def _call_llm_with_tools_audited(messages: list, tools: list) -> Any:
+    return llm_client.call_llm_with_tools(messages, tools)
 
 
 def _format_tool_error(exc: BaseException) -> str:
@@ -35,6 +42,7 @@ def ask(
     tools = mcp_list_tools(mcp_url)
     if not tools:
         logger.warning("[AGENT] no MCP tools -> insufficient_context")
+        audit_event("decision", reason="no_tools", status="insufficient_context")
         return AnswerContract(
             answer=INSUFFICIENT_ANSWER,
             confidence=0.0,
@@ -49,8 +57,15 @@ def ask(
     total_tool_calls = 0
 
     while total_tool_calls < MAX_TOOL_CALLS_PER_REQUEST:
-        completion = llm_client.call_llm_with_tools(messages, tools)
+        completion = _call_llm_with_tools_audited(messages, tools)
         choice = completion.choices[0] if completion.choices else None
+        if choice and getattr(completion, "usage", None):
+            u = completion.usage
+            audit_event(
+                "llm.completion",
+                total_tokens=getattr(u, "total_tokens", None),
+                finish_reason=getattr(choice, "finish_reason", None),
+            )
         if not choice:
             break
         msg = choice.message
@@ -65,6 +80,7 @@ def ask(
                 logger.info("[AGENT] done status=%s", parsed.status)
                 return parsed
             logger.info("[AGENT] parse/repair failed -> insufficient_context")
+            audit_event("decision", reason="parse_failed", status="insufficient_context")
             return AnswerContract(
                 answer=INSUFFICIENT_ANSWER,
                 confidence=0.0,
@@ -112,6 +128,7 @@ def ask(
             total_tool_calls += 1
 
     logger.info("[AGENT] max_tool_calls or no valid answer -> insufficient_context")
+    audit_event("decision", reason="max_tool_calls", status="insufficient_context")
     return AnswerContract(
         answer=INSUFFICIENT_ANSWER,
         confidence=0.0,

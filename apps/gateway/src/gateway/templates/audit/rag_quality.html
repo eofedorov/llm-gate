@@ -1,0 +1,44 @@
+{% extends "audit/_layout.html" %}
+{% block title %}RAG Quality{% endblock %}
+{% block content %}
+<h1>RAG Quality</h1>
+<p class="empty-state" style="margin-bottom: 1rem;">Insufficient context vs Low top1 score; sources histogram; top documents.</p>
+<div class="chart-wrap chart-wrap--with-overlay" style="position: relative;">
+  <canvas id="chart-insufficient-lowtop1"></canvas>
+  <div id="rag-empty" class="empty-state chart-empty-overlay" style="display: none;">Нет данных. Убедитесь, что audit-service запущен и отправляет события RAG.</div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+(function() {
+  const ts = {{ timeseries | tojson | safe }} || {};
+  let labels = ts.labels || [];
+  let datasets = ts.datasets || [];
+  const ctx = document.getElementById('chart-insufficient-lowtop1');
+  if (!ctx) return;
+  const isEmpty = labels.length === 0;
+  if (isEmpty) {
+    labels = ['Нет данных'];
+    datasets = [{ label: 'Insufficient rate', data: [0] }];
+    var ragEmpty = document.getElementById('rag-empty');
+    if (ragEmpty) ragEmpty.style.display = 'flex';
+  }
+  const colors = ['#58a6ff', '#f85149'];
+  new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: labels,
+      datasets: datasets.slice(0, 2).map(function(d, i) {
+        return { label: d.label || (i === 0 ? 'Insufficient rate' : 'Low top1 rate'), data: d.data || [], borderColor: colors[i], fill: false };
+      })
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { position: 'top' } },
+      scales: { x: { display: true }, y: { beginAtZero: true, max: isEmpty ? 1 : 1 } }
+    }
+  });
+})();
+</script>
+{% endblock %}

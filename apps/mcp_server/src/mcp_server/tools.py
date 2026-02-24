@@ -7,6 +7,7 @@ from decimal import Decimal
 from typing import Any
 from uuid import UUID
 
+from audit import audit_event, audited_span
 from db.connection import get_pool
 from db.queries import execute_readonly_sql, get_sql_allowlist
 from mcp_server.rag.formats import truncate_preview
@@ -37,6 +38,7 @@ def _check_sql_allowlist(conn, query: str) -> None:
     for m in _TABLE_REF.finditer(query):
         schema, table = m.group(1), m.group(2)
         if (schema, table) not in allowlist:
+            audit_event("policy.blocked", reason=f"Table {schema}.{table} is not in sql_allowlist", validator="sql_allowlist")
             raise PolicyError(f"Table {schema}.{table} is not in sql_allowlist")
 
 
@@ -53,6 +55,7 @@ def _serialize_cell(x: Any) -> Any:
 
 
 @mcp.tool()
+@audited_span("kb_search", kind="tool.call", attrs={"tool_name": "kb_search"})
 def kb_search(
     query: str,
     k: int = 5,
@@ -98,6 +101,7 @@ def kb_search(
 
 
 @mcp.tool()
+@audited_span("kb_get_chunk", kind="tool.call", attrs={"tool_name": "kb_get_chunk"})
 def kb_get_chunk(chunk_id: str, run_id: str | None = None) -> dict[str, Any]:
     log.info("[MCP] kb_get_chunk chunk_id=%s", chunk_id)
     start = time.perf_counter()
@@ -105,6 +109,7 @@ def kb_get_chunk(chunk_id: str, run_id: str | None = None) -> dict[str, Any]:
     result_meta: dict[str, Any] = {}
     try:
         if not chunk_id or not isinstance(chunk_id, str) or not chunk_id.strip():
+            audit_event("policy.blocked", reason="chunk_id is required and must be non-empty string", validator="kb_get_chunk")
             raise PolicyError("chunk_id is required and must be non-empty string")
         store = QdrantStore()
         data = store.get_by_id(chunk_id.strip())
@@ -131,6 +136,7 @@ def kb_get_chunk(chunk_id: str, run_id: str | None = None) -> dict[str, Any]:
 
 
 @mcp.tool()
+@audited_span("sql_read", kind="tool.call", attrs={"tool_name": "sql_read"})
 def sql_read(query: str, run_id: str | None = None) -> dict[str, Any]:
     log.info("[MCP] sql_read query=%r", query[:100] + "..." if len(query) > 100 else query)
     start = time.perf_counter()
@@ -159,6 +165,7 @@ def sql_read(query: str, run_id: str | None = None) -> dict[str, Any]:
 
 
 @mcp.tool()
+@audited_span("kb_ingest", kind="tool.call", attrs={"tool_name": "kb_ingest"})
 def kb_ingest(run_id: str | None = None) -> dict[str, Any]:
     log.info("[MCP] kb_ingest start")
     start = time.perf_counter()

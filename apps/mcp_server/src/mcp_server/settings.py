@@ -5,6 +5,7 @@ from common.settings import BaseAppSettings
 class Settings(BaseAppSettings):
     """MCP-server-специфичные поля поверх базовых (database_url, qdrant_* из common)."""
 
+    audit_service_url: str = ""
     datastore_url: str = ""
     rag_embedding_model: str = ""
     rag_chunk_size: int = 512

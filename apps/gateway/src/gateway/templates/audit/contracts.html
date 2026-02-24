@@ -1,0 +1,64 @@
+{% extends "audit/_layout.html" %}
+{% block title %}Contracts & Repair{% endblock %}
+{% block content %}
+<h1>Contracts & Repair</h1>
+<p class="empty-state" style="margin-bottom: 1rem;">Schema fail rate vs Repair success rate; finish_reason distribution.</p>
+<div class="chart-wrap chart-wrap--with-overlay" style="position: relative;">
+  <canvas id="chart-schema-repair"></canvas>
+  <div id="contracts-ts-empty" class="empty-state chart-empty-overlay" style="display: none;">Нет временных рядов по контрактам.</div>
+</div>
+{% if contracts.finish_reason %}
+<div class="chart-wrap" style="height: 260px;">
+  <canvas id="chart-finish-reason"></canvas>
+</div>
+{% else %}
+<div class="empty-state">Нет данных по finish_reason.</div>
+{% endif %}
+{% endblock %}
+{% block scripts %}
+<script>
+(function() {
+  const ts = {{ timeseries | tojson | safe }} || {};
+  let labels = ts.labels || [];
+  let datasets = ts.datasets || [];
+  const ctx = document.getElementById('chart-schema-repair');
+  if (!ctx) return;
+  const isEmpty = labels.length === 0 || datasets.length === 0;
+  if (isEmpty) {
+    labels = ['Нет данных'];
+    datasets = [{ label: 'Schema fail rate', data: [0] }];
+    var contractsEmpty = document.getElementById('contracts-ts-empty');
+    if (contractsEmpty) contractsEmpty.style.display = 'flex';
+  }
+  new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: labels,
+      datasets: datasets.slice(0, 2).map(function(d, i) {
+        return { label: d.label || (i === 0 ? 'Schema fail rate' : 'Repair rate'), data: d.data || [], borderColor: i ? '#3fb950' : '#f85149', fill: false };
+      })
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { position: 'top' } },
+      scales: { x: { display: true }, y: { beginAtZero: true, max: isEmpty ? 1 : 1 } }
+    }
+  });
+  const fr = {{ contracts.finish_reason | tojson | safe }} || [];
+  const frCtx = document.getElementById('chart-finish-reason');
+  if (frCtx && Array.isArray(fr) && fr.length > 0) {
+    var names = fr.map(function(x) { return x.reason || 'other'; });
+    var values = fr.map(function(x) { return x.count || 0; });
+    new Chart(frCtx, {
+      type: 'doughnut',
+      data: {
+        labels: names,
+        datasets: [{ data: values, backgroundColor: ['#58a6ff', '#3fb950', '#f85149', '#d29922', '#8b949e'] }]
+      },
+      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'right' } } }
+    });
+  }
+})();
+</script>
+{% endblock %}

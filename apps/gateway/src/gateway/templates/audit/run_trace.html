@@ -1,0 +1,23 @@
+{% extends "audit/_layout.html" %}
+{% block title %}Run Trace{% endblock %}
+{% block content %}
+<h1>Run Trace</h1>
+<p style="color: var(--muted); margin-bottom: 1rem;">Trace ID: <code>{{ trace_id }}</code> <a href="/audit/runs" style="color: var(--accent); margin-left: 0.5rem;">← Назад к списку</a></p>
+{% if events %}
+<div class="timeline">
+  {% for e in events %}
+  <div class="timeline-item">
+    <div class="ts">{{ e.get('ts', e.get('timestamp', '')) }}</div>
+    <div class="event-type">{{ e.get('event_type', 'event') }}</div>
+    {% if e.get('attrs') %}
+    <div class="attrs">{{ e.attrs | tojson }}</div>
+    {% elif e.get('span_id') %}
+    <div class="attrs">span_id: {{ e.span_id }}{% if e.get('duration_ms') %} · duration_ms: {{ e.duration_ms }}{% endif %}{% if e.get('tool_name') %} · tool: {{ e.tool_name }}{% endif %}</div>
+    {% endif %}
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<div class="empty-state">События по этому trace_id не найдены или audit-service недоступен.</div>
+{% endif %}
+{% endblock %}
