@@ -149,7 +149,7 @@ services:
     build:
       context: .
       dockerfile: apps/airflow/Dockerfile
-    command: webserver
+    command: api-server
     ports:
       - "8080:8080"
     environment:
