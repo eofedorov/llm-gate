@@ -1,0 +1,702 @@
+[
+  {
+    "id": 1,
+    "title": "[BUG] API returns 500 on empty payload",
+    "description": "Sending an empty JSON body to POST /v1/issues results in a 500 error instead of a 400 validation error.",
+    "author": "alice",
+    "created_at": "2025-01-01T10:15:00Z"
+  },
+  {
+    "id": 2,
+    "title": "[BUG] Login form ignores Enter key",
+    "description": "On the login page pressing Enter in the password field does not submit the form in Chrome.",
+    "author": "bob",
+    "created_at": "2025-01-01T11:20:00Z"
+  },
+  {
+    "id": 3,
+    "title": "[BUG] Incorrect total in cart summary",
+    "description": "Cart total does not include shipping fee when promo code is applied.",
+    "author": "carol",
+    "created_at": "2025-01-01T12:30:00Z"
+  },
+  {
+    "id": 4,
+    "title": "[BUG] 404 page missing localization",
+    "description": "The 404 error page is always shown in English even when the locale is set to de-DE.",
+    "author": "dave",
+    "created_at": "2025-01-01T13:45:00Z"
+  },
+  {
+    "id": 5,
+    "title": "[BUG] Session timeout too aggressive",
+    "description": "Users are logged out after ~5 minutes of inactivity instead of the configured 30 minutes.",
+    "author": "alice",
+    "created_at": "2025-01-01T14:10:00Z"
+  },
+  {
+    "id": 6,
+    "title": "[BUG] CSV export corrupts non-ASCII characters",
+    "description": "Customer names with accents are exported as question marks in the CSV report.",
+    "author": "bob",
+    "created_at": "2025-01-02T09:05:00Z"
+  },
+  {
+    "id": 7,
+    "title": "[BUG] Mobile menu overlaps footer",
+    "description": "On small screens the expanded mobile navigation overlaps the footer making links unclickable.",
+    "author": "carol",
+    "created_at": "2025-01-02T09:40:00Z"
+  },
+  {
+    "id": 8,
+    "title": "[BUG] Double charge on slow network",
+    "description": "On a slow connection clicking the Pay button twice charges the customer twice.",
+    "author": "dave",
+    "created_at": "2025-01-02T10:15:00Z"
+  },
+  {
+    "id": 9,
+    "title": "[BUG] Websocket disconnects after 60 seconds",
+    "description": "Real-time notifications stop arriving after about a minute even though the tab is active.",
+    "author": "alice",
+    "created_at": "2025-01-02T11:00:00Z"
+  },
+  {
+    "id": 10,
+    "title": "[BUG] Password reset link invalid in Outlook",
+    "description": "Password reset links opened from Outlook desktop are URL-encoded twice and rejected by the backend.",
+    "author": "bob",
+    "created_at": "2025-01-02T11:30:00Z"
+  },
+  {
+    "id": 11,
+    "title": "[FEATURE] Dark mode for dashboard",
+    "description": "Add a dark theme toggle for the analytics dashboard with persisted user preference.",
+    "author": "carol",
+    "created_at": "2025-01-02T12:00:00Z"
+  },
+  {
+    "id": 12,
+    "title": "[FEATURE] Bulk edit for issues list",
+    "description": "Allow selecting multiple issues and changing status, assignee, and labels in one action.",
+    "author": "dave",
+    "created_at": "2025-01-02T12:30:00Z"
+  },
+  {
+    "id": 13,
+    "title": "[FEATURE] SSO with Azure AD",
+    "description": "Implement SSO integration with Azure Active Directory for enterprise tenants.",
+    "author": "alice",
+    "created_at": "2025-01-02T13:10:00Z"
+  },
+  {
+    "id": 14,
+    "title": "[FEATURE] Export board to PDF",
+    "description": "Product managers want to export the kanban board as a PDF snapshot for stakeholders.",
+    "author": "bob",
+    "created_at": "2025-01-02T13:45:00Z"
+  },
+  {
+    "id": 15,
+    "title": "[FEATURE] In-app notifications center",
+    "description": "Add a notifications panel listing recent events with filters and read/unread state.",
+    "author": "carol",
+    "created_at": "2025-01-02T14:20:00Z"
+  },
+  {
+    "id": 16,
+    "title": "[FEATURE] Custom fields for projects",
+    "description": "Admins should be able to define custom fields for projects with basic validation.",
+    "author": "dave",
+    "created_at": "2025-01-02T15:00:00Z"
+  },
+  {
+    "id": 17,
+    "title": "[FEATURE] Slack integration for alerts",
+    "description": "Send high-priority incident alerts to a configurable Slack channel.",
+    "author": "alice",
+    "created_at": "2025-01-02T15:30:00Z"
+  },
+  {
+    "id": 18,
+    "title": "[FEATURE] Time tracking on tasks",
+    "description": "Add simple time tracking per task with manual entry and weekly summary report.",
+    "author": "bob",
+    "created_at": "2025-01-02T16:05:00Z"
+  },
+  {
+    "id": 19,
+    "title": "[FEATURE] Saved filters for backlog",
+    "description": "Allow users to save complex backlog filters and share them with the team.",
+    "author": "carol",
+    "created_at": "2025-01-02T16:40:00Z"
+  },
+  {
+    "id": 20,
+    "title": "[FEATURE] Project-level API tokens",
+    "description": "Introduce project-scoped API tokens with configurable permissions.",
+    "author": "dave",
+    "created_at": "2025-01-02T17:15:00Z"
+  },
+  {
+    "id": 21,
+    "title": "[UX] Improve empty state for issues list",
+    "description": "When there are no issues, show helpful actions and a friendly illustration instead of a blank table.",
+    "author": "alice",
+    "created_at": "2025-01-03T09:00:00Z"
+  },
+  {
+    "id": 22,
+    "title": "[UX] Clarify permissions error messages",
+    "description": "Replace generic 'Forbidden' toast with specific explanation of missing permission.",
+    "author": "bob",
+    "created_at": "2025-01-03T09:30:00Z"
+  },
+  {
+    "id": 23,
+    "title": "[UX] Make labels selection searchable",
+    "description": "The labels dropdown becomes hard to use with many items; add typeahead search.",
+    "author": "carol",
+    "created_at": "2025-01-03T10:00:00Z"
+  },
+  {
+    "id": 24,
+    "title": "[UX] Better contrast for disabled buttons",
+    "description": "Disabled buttons are too low-contrast on some monitors and look like plain text.",
+    "author": "dave",
+    "created_at": "2025-01-03T10:30:00Z"
+  },
+  {
+    "id": 25,
+    "title": "[UX] Remember last used project",
+    "description": "When a user returns to the app, open the last active project instead of the first alphabetically.",
+    "author": "alice",
+    "created_at": "2025-01-03T11:00:00Z"
+  },
+  {
+    "id": 26,
+    "title": "[UX] Inline editing for issue title",
+    "description": "Allow editing the issue title directly from the details view without opening a modal.",
+    "author": "bob",
+    "created_at": "2025-01-03T11:30:00Z"
+  },
+  {
+    "id": 27,
+    "title": "[UX] Keyboard shortcuts for navigation",
+    "description": "Introduce keyboard shortcuts for switching between backlog, board, and reports.",
+    "author": "carol",
+    "created_at": "2025-01-03T12:00:00Z"
+  },
+  {
+    "id": 28,
+    "title": "[UX] Improve search results ranking",
+    "description": "Search should prioritize exact matches in title over partial matches in description.",
+    "author": "dave",
+    "created_at": "2025-01-03T12:30:00Z"
+  },
+  {
+    "id": 29,
+    "title": "[UX] Show avatars in comments",
+    "description": "Display user avatars next to comments to improve readability of long threads.",
+    "author": "alice",
+    "created_at": "2025-01-03T13:00:00Z"
+  },
+  {
+    "id": 30,
+    "title": "[UX] Loading skeleton for issue details",
+    "description": "Replace spinner with skeleton UI while issue details are loading.",
+    "author": "bob",
+    "created_at": "2025-01-03T13:30:00Z"
+  },
+  {
+    "id": 31,
+    "title": "[INFRA] Upgrade Postgres to 16",
+    "description": "Plan and execute upgrade of the primary Postgres instance from 14 to 16.",
+    "author": "carol",
+    "created_at": "2025-01-03T14:00:00Z"
+  },
+  {
+    "id": 32,
+    "title": "[INFRA] Introduce staging environment",
+    "description": "Create a dedicated staging environment mirroring production topology.",
+    "author": "dave",
+    "created_at": "2025-01-03T14:30:00Z"
+  },
+  {
+    "id": 33,
+    "title": "[INFRA] Add Redis cluster monitoring",
+    "description": "Configure Redis Exporter and dashboards to monitor cache health and hit ratio.",
+    "author": "alice",
+    "created_at": "2025-01-03T15:00:00Z"
+  },
+  {
+    "id": 34,
+    "title": "[INFRA] Migrate object storage to S3",
+    "description": "Move file uploads from local disk to S3-compatible storage with lifecycle rules.",
+    "author": "bob",
+    "created_at": "2025-01-03T15:30:00Z"
+  },
+  {
+    "id": 35,
+    "title": "[INFRA] Introduce centralized logging",
+    "description": "Ship application logs to a centralized ELK stack with structured fields.",
+    "author": "carol",
+    "created_at": "2025-01-03T16:00:00Z"
+  },
+  {
+    "id": 36,
+    "title": "[INFRA] Harden Kubernetes RBAC",
+    "description": "Review and tighten Kubernetes RBAC roles for CI and developers.",
+    "author": "dave",
+    "created_at": "2025-01-03T16:30:00Z"
+  },
+  {
+    "id": 37,
+    "title": "[INFRA] Add CDN in front of static assets",
+    "description": "Serve static assets via CDN to improve latency for global users.",
+    "author": "alice",
+    "created_at": "2025-01-03T17:00:00Z"
+  },
+  {
+    "id": 38,
+    "title": "[INFRA] Automate DB backups verification",
+    "description": "Nightly job to restore backups into a test instance and run smoke checks.",
+    "author": "bob",
+    "created_at": "2025-01-03T17:30:00Z"
+  },
+  {
+    "id": 39,
+    "title": "[INFRA] Add rate limiting at gateway",
+    "description": "Configure API gateway to limit abusive clients and protect backend services.",
+    "author": "carol",
+    "created_at": "2025-01-03T18:00:00Z"
+  },
+  {
+    "id": 40,
+    "title": "[INFRA] Optimize Docker images size",
+    "description": "Refactor Dockerfiles to use slim base images and multi-stage builds.",
+    "author": "dave",
+    "created_at": "2025-01-03T18:30:00Z"
+  },
+  {
+    "id": 41,
+    "title": "[TECHDEBT] Replace legacy HTTP client",
+    "description": "Migrate remaining usages of the deprecated HTTP client to the new wrapper.",
+    "author": "alice",
+    "created_at": "2025-01-04T09:00:00Z"
+  },
+  {
+    "id": 42,
+    "title": "[TECHDEBT] Consolidate date utilities",
+    "description": "We have three different date helper modules; consolidate into a single library.",
+    "author": "bob",
+    "created_at": "2025-01-04T09:30:00Z"
+  },
+  {
+    "id": 43,
+    "title": "[TECHDEBT] Remove feature flags for v1 onboarding",
+    "description": "v1 onboarding is now default; clean up old flags and dead code paths.",
+    "author": "carol",
+    "created_at": "2025-01-04T10:00:00Z"
+  },
+  {
+    "id": 44,
+    "title": "[TECHDEBT] Refactor monolithic notifications service",
+    "description": "Split notifications service into smaller modules by channel (email, push, web).",
+    "author": "dave",
+    "created_at": "2025-01-04T10:30:00Z"
+  },
+  {
+    "id": 45,
+    "title": "[TECHDEBT] Add tests for billing proration",
+    "description": "Billing proration is complex and under-tested; add unit and integration tests.",
+    "author": "alice",
+    "created_at": "2025-01-04T11:00:00Z"
+  },
+  {
+    "id": 46,
+    "title": "[TECHDEBT] Remove unused CSS utilities",
+    "description": "Clean up unused utility classes from the legacy CSS bundle.",
+    "author": "bob",
+    "created_at": "2025-01-04T11:30:00Z"
+  },
+  {
+    "id": 47,
+    "title": "[TECHDEBT] Normalize logging format",
+    "description": "Standardize log fields and levels across services for easier debugging.",
+    "author": "carol",
+    "created_at": "2025-01-04T12:00:00Z"
+  },
+  {
+    "id": 48,
+    "title": "[TECHDEBT] Migrate to Python 3.12",
+    "description": "Update codebase and dependencies to support Python 3.12 as the default runtime.",
+    "author": "dave",
+    "created_at": "2025-01-04T12:30:00Z"
+  },
+  {
+    "id": 49,
+    "title": "[TECHDEBT] Introduce type hints in core modules",
+    "description": "Add typing to critical modules and enable strict mypy checks.",
+    "author": "alice",
+    "created_at": "2025-01-04T13:00:00Z"
+  },
+  {
+    "id": 50,
+    "title": "[TECHDEBT] Cleanup legacy feature toggles",
+    "description": "Archive and remove toggles that have been permanently enabled for more than 6 months.",
+    "author": "bob",
+    "created_at": "2025-01-04T13:30:00Z"
+  },
+  {
+    "id": 51,
+    "title": "[BUG] Comment editor loses text on refresh",
+    "description": "If the page is refreshed while writing a comment, the draft is lost instead of being auto-saved.",
+    "author": "carol",
+    "created_at": "2025-01-05T09:10:00Z"
+  },
+  {
+    "id": 52,
+    "title": "[BUG] Pagination shows wrong total pages",
+    "description": "When filters are applied, the total pages count does not update correctly.",
+    "author": "dave",
+    "created_at": "2025-01-05T09:40:00Z"
+  },
+  {
+    "id": 53,
+    "title": "[BUG] Attachments fail for large images",
+    "description": "Uploading images larger than 10MB fails silently without error message.",
+    "author": "alice",
+    "created_at": "2025-01-05T10:10:00Z"
+  },
+  {
+    "id": 54,
+    "title": "[BUG] Board column WIP limit not enforced",
+    "description": "Issues can be moved into a column even when the WIP limit is exceeded.",
+    "author": "bob",
+    "created_at": "2025-01-05T10:40:00Z"
+  },
+  {
+    "id": 55,
+    "title": "[BUG] Wrong timezone in activity log",
+    "description": "Timestamps in the activity log are shown in UTC instead of user timezone.",
+    "author": "carol",
+    "created_at": "2025-01-05T11:05:00Z"
+  },
+  {
+    "id": 56,
+    "title": "[BUG] Search indexing skips archived projects",
+    "description": "Issues from archived projects should remain searchable but are currently missing.",
+    "author": "dave",
+    "created_at": "2025-01-05T11:30:00Z"
+  },
+  {
+    "id": 57,
+    "title": "[BUG] Tag suggestions show duplicates",
+    "description": "Tag autocomplete sometimes shows duplicate entries for the same label.",
+    "author": "alice",
+    "created_at": "2025-01-05T12:00:00Z"
+  },
+  {
+    "id": 58,
+    "title": "[BUG] Cannot reopen closed epic",
+    "description": "Closing an epic is irreversible due to missing 'Reopen' action.",
+    "author": "bob",
+    "created_at": "2025-01-05T12:30:00Z"
+  },
+  {
+    "id": 59,
+    "title": "[BUG] Jira import drops comments",
+    "description": "Comments are not imported when syncing issues from Jira projects.",
+    "author": "carol",
+    "created_at": "2025-01-05T13:00:00Z"
+  },
+  {
+    "id": 60,
+    "title": "[BUG] Filter by assignee ignores unassigned issues",
+    "description": "Selecting 'Unassigned' in the assignee filter returns no results.",
+    "author": "dave",
+    "created_at": "2025-01-05T13:30:00Z"
+  },
+  {
+    "id": 61,
+    "title": "[FEATURE] Roadmap view for epics",
+    "description": "Introduce a timeline view of epics with start/end dates and progress.",
+    "author": "alice",
+    "created_at": "2025-01-06T09:00:00Z"
+  },
+  {
+    "id": 62,
+    "title": "[FEATURE] Custom SLA policies",
+    "description": "Allow configuring SLA rules per project and surfacing breaches in the UI.",
+    "author": "bob",
+    "created_at": "2025-01-06T09:30:00Z"
+  },
+  {
+    "id": 63,
+    "title": "[FEATURE] Dependency graph between tasks",
+    "description": "Show visual dependencies between tasks and block merges when blockers are open.",
+    "author": "carol",
+    "created_at": "2025-01-06T10:00:00Z"
+  },
+  {
+    "id": 64,
+    "title": "[FEATURE] Multi-project search",
+    "description": "Support searching across all projects with advanced filters.",
+    "author": "dave",
+    "created_at": "2025-01-06T10:30:00Z"
+  },
+  {
+    "id": 65,
+    "title": "[FEATURE] GitHub checks integration",
+    "description": "Display GitHub checks status directly in the issue view when linked to a PR.",
+    "author": "alice",
+    "created_at": "2025-01-06T11:00:00Z"
+  },
+  {
+    "id": 66,
+    "title": "[FEATURE] Email-to-issue gateway",
+    "description": "Allow customers to create issues by sending emails to a project-specific address.",
+    "author": "bob",
+    "created_at": "2025-01-06T11:30:00Z"
+  },
+  {
+    "id": 67,
+    "title": "[FEATURE] Service-level dashboards",
+    "description": "Provide SLO/SLA dashboards aggregating metrics across multiple projects.",
+    "author": "carol",
+    "created_at": "2025-01-06T12:00:00Z"
+  },
+  {
+    "id": 68,
+    "title": "[FEATURE] Auto-assign based on component",
+    "description": "Automatically assign new issues to owners based on affected component.",
+    "author": "dave",
+    "created_at": "2025-01-06T12:30:00Z"
+  },
+  {
+    "id": 69,
+    "title": "[FEATURE] Audit log export",
+    "description": "Admins need to export audit logs for compliance reviews.",
+    "author": "alice",
+    "created_at": "2025-01-06T13:00:00Z"
+  },
+  {
+    "id": 70,
+    "title": "[FEATURE] Multi-language UI support",
+    "description": "Add support for Spanish and German UI translations.",
+    "author": "bob",
+    "created_at": "2025-01-06T13:30:00Z"
+  },
+  {
+    "id": 71,
+    "title": "[UX] Simplify project creation flow",
+    "description": "Reduce the number of steps and required fields when creating a new project.",
+    "author": "carol",
+    "created_at": "2025-01-07T09:00:00Z"
+  },
+  {
+    "id": 72,
+    "title": "[UX] Clarify priority labels",
+    "description": "Replace P0/P1/P2 with human-friendly labels and help text.",
+    "author": "dave",
+    "created_at": "2025-01-07T09:30:00Z"
+  },
+  {
+    "id": 73,
+    "title": "[UX] Add quick filters on board",
+    "description": "Provide one-click filters for 'My issues', 'Recently updated', and 'Blocked'.",
+    "author": "alice",
+    "created_at": "2025-01-07T10:00:00Z"
+  },
+  {
+    "id": 74,
+    "title": "[UX] Improve onboarding checklist",
+    "description": "The onboarding checklist is easy to skip; make it more prominent and contextual.",
+    "author": "bob",
+    "created_at": "2025-01-07T10:30:00Z"
+  },
+  {
+    "id": 75,
+    "title": "[UX] Better error page for 500s",
+    "description": "Show user-friendly 500 page with retry and support links instead of raw stack trace.",
+    "author": "carol",
+    "created_at": "2025-01-07T11:00:00Z"
+  },
+  {
+    "id": 76,
+    "title": "[UX] Make epic links more discoverable",
+    "description": "Users do not notice that issues are part of an epic; add clearer badges and navigation.",
+    "author": "dave",
+    "created_at": "2025-01-07T11:30:00Z"
+  },
+  {
+    "id": 77,
+    "title": "[UX] Improve contrast in dark mode",
+    "description": "Some text in dark mode fails WCAG contrast requirements on older monitors.",
+    "author": "alice",
+    "created_at": "2025-01-07T12:00:00Z"
+  },
+  {
+    "id": 78,
+    "title": "[UX] Add breadcrumbs to settings pages",
+    "description": "Users get lost in nested settings; add breadcrumbs and back links.",
+    "author": "bob",
+    "created_at": "2025-01-07T12:30:00Z"
+  },
+  {
+    "id": 79,
+    "title": "[UX] Auto-focus search input",
+    "description": "When opening the search overlay, focus should move automatically to the input field.",
+    "author": "carol",
+    "created_at": "2025-01-07T13:00:00Z"
+  },
+  {
+    "id": 80,
+    "title": "[UX] Show relative times by default",
+    "description": "Use '5 minutes ago' style timestamps in lists, keep exact time on hover tooltip.",
+    "author": "dave",
+    "created_at": "2025-01-07T13:30:00Z"
+  },
+  {
+    "id": 81,
+    "title": "[INFRA] Add canary deployment pipeline",
+    "description": "Enable canary releases for the API service with gradual traffic shifting.",
+    "author": "alice",
+    "created_at": "2025-01-08T09:00:00Z"
+  },
+  {
+    "id": 82,
+    "title": "[INFRA] Introduce feature flag service",
+    "description": "Move feature flags from config files into a dedicated service.",
+    "author": "bob",
+    "created_at": "2025-01-08T09:30:00Z"
+  },
+  {
+    "id": 83,
+    "title": "[INFRA] Implement zero-downtime migrations",
+    "description": "Standardize approach for schema migrations without downtime.",
+    "author": "carol",
+    "created_at": "2025-01-08T10:00:00Z"
+  },
+  {
+    "id": 84,
+    "title": "[INFRA] Add synthetic monitoring probes",
+    "description": "Run synthetic checks from multiple regions to detect outages early.",
+    "author": "dave",
+    "created_at": "2025-01-08T10:30:00Z"
+  },
+  {
+    "id": 85,
+    "title": "[INFRA] Secure secrets management",
+    "description": "Migrate secrets from environment variables to a managed secrets store.",
+    "author": "alice",
+    "created_at": "2025-01-08T11:00:00Z"
+  },
+  {
+    "id": 86,
+    "title": "[INFRA] Add per-tenant rate limits",
+    "description": "Support per-tenant throttling rules to prevent noisy neighbors.",
+    "author": "bob",
+    "created_at": "2025-01-08T11:30:00Z"
+  },
+  {
+    "id": 87,
+    "title": "[INFRA] Introduce blue-green deployments",
+    "description": "Support blue-green releases for critical services with fast rollback.",
+    "author": "carol",
+    "created_at": "2025-01-08T12:00:00Z"
+  },
+  {
+    "id": 88,
+    "title": "[INFRA] Implement centralized tracing",
+    "description": "Adopt OpenTelemetry-based tracing across all services.",
+    "author": "dave",
+    "created_at": "2025-01-08T12:30:00Z"
+  },
+  {
+    "id": 89,
+    "title": "[INFRA] Add autoscaling policies",
+    "description": "Configure HPA for API and workers based on CPU and queue length.",
+    "author": "alice",
+    "created_at": "2025-01-08T13:00:00Z"
+  },
+  {
+    "id": 90,
+    "title": "[INFRA] Harden TLS configuration",
+    "description": "Disable weak ciphers and enforce TLS 1.2+ for all public endpoints.",
+    "author": "bob",
+    "created_at": "2025-01-08T13:30:00Z"
+  },
+  {
+    "id": 91,
+    "title": "[TECHDEBT] Reduce controller complexity",
+    "description": "Split large controller classes into smaller, focused modules.",
+    "author": "carol",
+    "created_at": "2025-01-09T09:00:00Z"
+  },
+  {
+    "id": 92,
+    "title": "[TECHDEBT] Introduce linters in CI",
+    "description": "Add flake8 and eslint checks to CI pipelines and fix existing violations.",
+    "author": "dave",
+    "created_at": "2025-01-09T09:30:00Z"
+  },
+  {
+    "id": 93,
+    "title": "[TECHDEBT] Replace custom auth middleware",
+    "description": "Simplify authentication by using the framework-provided middleware.",
+    "author": "alice",
+    "created_at": "2025-01-09T10:00:00Z"
+  },
+  {
+    "id": 94,
+    "title": "[TECHDEBT] Improve test data factories",
+    "description": "Refactor test factories to be faster and easier to compose.",
+    "author": "bob",
+    "created_at": "2025-01-09T10:30:00Z"
+  },
+  {
+    "id": 95,
+    "title": "[TECHDEBT] Remove deprecated REST endpoints",
+    "description": "Clean up v1 REST endpoints that have GraphQL replacements.",
+    "author": "carol",
+    "created_at": "2025-01-09T11:00:00Z"
+  },
+  {
+    "id": 96,
+    "title": "[TECHDEBT] Migrate cron jobs to scheduler service",
+    "description": "Move legacy cron jobs into the centralized scheduler with observability.",
+    "author": "dave",
+    "created_at": "2025-01-09T11:30:00Z"
+  },
+  {
+    "id": 97,
+    "title": "[TECHDEBT] Remove direct DB access from UI",
+    "description": "Ensure the UI talks only to APIs, not directly to the database.",
+    "author": "alice",
+    "created_at": "2025-01-09T12:00:00Z"
+  },
+  {
+    "id": 98,
+    "title": "[TECHDEBT] Standardize error handling strategy",
+    "description": "Adopt a consistent pattern for propagating and logging errors.",
+    "author": "bob",
+    "created_at": "2025-01-09T12:30:00Z"
+  },
+  {
+    "id": 99,
+    "title": "[TECHDEBT] Remove unused feature modules",
+    "description": "Archive and delete features that are no longer in use by any tenant.",
+    "author": "carol",
+    "created_at": "2025-01-09T13:00:00Z"
+  },
+  {
+    "id": 100,
+    "title": "[TECHDEBT] Document architecture decisions",
+    "description": "Backfill ADRs for major decisions taken over the last year.",
+    "author": "dave",
+    "created_at": "2025-01-09T13:30:00Z"
+  }
+]

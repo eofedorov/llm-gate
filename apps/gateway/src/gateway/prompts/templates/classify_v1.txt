@@ -1,0 +1,8 @@
+Classify the following engineering issue into one of the categories: bug, feature, question, other.
+
+Task: {{ task }}
+Input: {{ input }}
+{% if constraints %}Constraints: {{ constraints }}{% endif %}
+
+{{ output_contract }}
+

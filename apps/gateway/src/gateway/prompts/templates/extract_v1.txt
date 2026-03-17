@@ -1,0 +1,8 @@
+Extract key entities and a concise summary from the following engineering issue.
+
+Task: {{ task }}
+Input: {{ input }}
+{% if constraints %}Constraints: {{ constraints }}{% endif %}
+
+{{ output_contract }}
+

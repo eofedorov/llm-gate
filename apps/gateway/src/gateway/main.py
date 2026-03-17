@@ -9,7 +9,7 @@ from fastapi.staticfiles import StaticFiles
 
 from audit import AuditMiddleware
 from gateway.api.routes import router
-from gateway.api import routes_rag, routes_audit
+from gateway.api import routes_rag, routes_audit, routes_run
 from gateway.mcp.client.mcp_client import MCPConnectionError, MCPToolError
 from gateway.settings import Settings
 
@@ -45,6 +45,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(title="LLM-Gate", description="AI-шлюз для инженерных задач", lifespan=lifespan)
 app.add_middleware(AuditMiddleware)
 app.include_router(router, prefix="", tags=["run"])
+app.include_router(routes_run.router, prefix="/run", tags=["run"])
 app.include_router(routes_rag.router, prefix="/rag", tags=["rag"])
 app.include_router(routes_audit.router, prefix="/audit", tags=["audit"])
 
