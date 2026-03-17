@@ -1,6 +1,8 @@
 """FastAPI/Starlette middleware: trace_id propagation, run.start / run.finish events."""
 
 import time
+from collections.abc import Awaitable, Callable
+
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 from starlette.responses import Response
@@ -17,7 +19,7 @@ class AuditMiddleware(BaseHTTPMiddleware):
     On response: emit run.finish (status, duration_ms), add X-Trace-Id to response.
     """
 
-    async def dispatch(self, request: Request, call_next: callable) -> Response:
+    async def dispatch(self, request: Request, call_next: Callable[[Request], Awaitable[Response]]) -> Response:
         trace_id = set_trace_id(request.headers.get(TRACE_HEADER))
         request.state.trace_id = trace_id
 
@@ -35,6 +37,7 @@ class AuditMiddleware(BaseHTTPMiddleware):
             raise
         finally:
             duration_ms = int((time.perf_counter() - start) * 1000)
-            audit_event("run.finish", status=status, duration_ms=duration_ms)
+            finish_reason = getattr(request.state, "audit_finish_reason", None)
+            audit_event("run.finish", status=status, duration_ms=duration_ms, finish_reason=finish_reason)
             if response is not None and TRACE_HEADER not in response.headers:
                 response.headers[TRACE_HEADER] = trace_id

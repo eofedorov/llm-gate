@@ -2,7 +2,7 @@
 import logging
 
 import httpx
-from fastapi import APIRouter, File, HTTPException, Query, UploadFile
+from fastapi import APIRouter, File, HTTPException, Query, Request, UploadFile
 from pydantic import BaseModel, Field
 
 from common.contracts.rag_schemas import AnswerContract
@@ -152,10 +152,10 @@ async def get_search(
 
 
 @router.post("/ask", response_model=AnswerContract)
-def post_ask(body: AskRequestBody, debug: bool = Query(default=False)):
+def post_ask(body: AskRequestBody, request: Request, debug: bool = Query(default=False)):
     """Ответ на вопрос по базе знаний через agent (MCP tools + LLM). Возвращает AnswerContract."""
     logger.info("[RAG] POST /ask question=%r", body.question[:80] if len(body.question) > 80 else body.question)
-    contract = ask(question=body.question)
+    contract = ask(question=body.question, request=request)
     if debug:
         pass  # chunks_used/doc_ids уже логируются в ask_service
     return contract

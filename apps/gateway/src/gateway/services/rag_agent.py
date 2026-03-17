@@ -34,6 +34,7 @@ def ask(
     question: str,
     run_id: UUID | str | None = None,
     mcp_url: str | None = None,
+    request: Any = None,
 ) -> AnswerContract:
     """
     Agent loop: получить tools из MCP -> цикл LLM + tool_calls (до 6 вызовов) -> разобрать финальный ответ в AnswerContract.
@@ -55,16 +56,22 @@ def ask(
         {"role": "user", "content": question.strip()},
     ]
     total_tool_calls = 0
+    last_finish_reason: str | None = None
+
+    def _set_audit_finish_reason(reason: str | None) -> None:
+        if request is not None and hasattr(request, "state"):
+            request.state.audit_finish_reason = reason
 
     while total_tool_calls < MAX_TOOL_CALLS_PER_REQUEST:
         completion = _call_llm_with_tools_audited(messages, tools)
         choice = completion.choices[0] if completion.choices else None
         if choice and getattr(completion, "usage", None):
             u = completion.usage
+            last_finish_reason = getattr(choice, "finish_reason", None)
             audit_event(
                 "llm.completion",
                 total_tokens=getattr(u, "total_tokens", None),
-                finish_reason=getattr(choice, "finish_reason", None),
+                finish_reason=last_finish_reason,
             )
         if not choice:
             break
@@ -78,9 +85,11 @@ def ask(
             )
             if parsed is not None:
                 logger.info("[AGENT] done status=%s", parsed.status)
+                _set_audit_finish_reason(last_finish_reason)
                 return parsed
             logger.info("[AGENT] parse/repair failed -> insufficient_context")
             audit_event("decision", reason="parse_failed", status="insufficient_context")
+            _set_audit_finish_reason(last_finish_reason)
             return AnswerContract(
                 answer=INSUFFICIENT_ANSWER,
                 confidence=0.0,
@@ -129,6 +138,7 @@ def ask(
 
     logger.info("[AGENT] max_tool_calls or no valid answer -> insufficient_context")
     audit_event("decision", reason="max_tool_calls", status="insufficient_context")
+    _set_audit_finish_reason(last_finish_reason)
     return AnswerContract(
         answer=INSUFFICIENT_ANSWER,
         confidence=0.0,

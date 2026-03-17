@@ -80,6 +80,7 @@ def parse_llm_response_or_repair(
         audit_event("schema_validation", result="ok")
         return model, None
     audit_event("schema_validation", result="fail", error=err)
+    logger.info("Parse/validation failed (%s), attempting LLM repair", err[:80] if err else "unknown")
     repair_messages = build_repair_messages(raw_content, schema_class)
     raw_repair = call_llm(repair_messages)
     parsed_repair = extract_json_from_text(raw_repair)
