@@ -63,6 +63,19 @@ h2 {
   min-height: 4rem;
 }
 
+.block select {
+  padding: 0.5rem 0.6rem;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  font: inherit;
+  background: #fff;
+}
+
+.block label {
+  font-size: 0.9rem;
+  color: #374151;
+}
+
 .block button {
   padding: 0.5rem 1rem;
   font: inherit;
@@ -164,4 +177,118 @@ h2 {
 .result .source .quote {
   margin-top: 0.25rem;
   color: #374151;
+}
+
+/* /run UI */
+.result pre.json {
+  margin: 0;
+  padding: 0.75rem;
+  background: #0b1020;
+  color: #e5e7eb;
+  border-radius: 8px;
+  overflow: auto;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  font-size: 0.85rem;
+  line-height: 1.35;
+}
+
+.badge {
+  display: inline-block;
+  padding: 0.15rem 0.5rem;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  border: 1px solid transparent;
+}
+
+.badge-bug {
+  background: #fee2e2;
+  color: #991b1b;
+  border-color: #fecaca;
+}
+
+.badge-feature {
+  background: #dcfce7;
+  color: #166534;
+  border-color: #bbf7d0;
+}
+
+.badge-question {
+  background: #e0f2fe;
+  color: #075985;
+  border-color: #bae6fd;
+}
+
+.badge-other {
+  background: #f3f4f6;
+  color: #374151;
+  border-color: #e5e7eb;
+}
+
+.muted {
+  color: #6b7280;
+  font-size: 0.85rem;
+}
+
+.confidence {
+  margin-top: 0.5rem;
+}
+
+.confidence-label {
+  margin-bottom: 0.35rem;
+}
+
+.confidence-bar {
+  width: 100%;
+  height: 10px;
+  border-radius: 999px;
+  background: #e5e7eb;
+  overflow: hidden;
+}
+
+.confidence-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #2563eb, #1d4ed8);
+}
+
+.run-rationale {
+  margin-top: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid #e5e7eb;
+}
+
+ul.entities {
+  list-style: none;
+  padding: 0;
+  margin: 0.5rem 0 0 0;
+}
+
+ul.entities li {
+  padding: 0.35rem 0.5rem;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  background: #f9fafb;
+  margin-bottom: 0.4rem;
+  display: flex;
+  gap: 0.4rem;
+  align-items: baseline;
+}
+
+.entity-type {
+  font-weight: 600;
+  color: #111827;
+}
+
+.entity-sep {
+  color: #9ca3af;
+}
+
+.entity-value {
+  color: #374151;
+  word-break: break-word;
+}
+
+.summary {
+  margin-top: 0.35rem;
+  white-space: pre-wrap;
 }

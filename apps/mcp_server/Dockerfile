@@ -3,13 +3,12 @@
 
 # Stage deps: shared libs + heavy Python deps. No app code.
 # Pre-downloads RAG embedding model so runtime never hits Hugging Face.
-FROM python:slim AS deps
+FROM python:3.11-slim AS deps
 WORKDIR /app
 RUN apt-get update && apt-get install -y --no-install-recommends curl \
     && rm -rf /var/lib/apt/lists/*
 
-RUN --mount=type=cache,target=/root/.cache/pip \
-    pip install \
+RUN pip install --no-cache-dir \
         --index-url https://download.pytorch.org/whl/cpu \
         --extra-index-url https://pypi.org/simple/ \
         torch sentence-transformers qdrant-client "psycopg[binary,pool]" mcp "uvicorn[standard]"
@@ -27,8 +26,7 @@ COPY shared/db ./shared/db
 COPY shared/audit ./shared/audit
 COPY apps/mcp_server/src ./src
 
-RUN --mount=type=cache,target=/root/.cache/pip \
-    pip install -e ./shared/common -e ./shared/db -e ./shared/audit
+RUN pip install --no-cache-dir -e ./shared/common -e ./shared/db -e ./shared/audit
 
 ENV PYTHONPATH=/app/src
 # Use pre-downloaded model only; no Hugging Face network calls at runtime.

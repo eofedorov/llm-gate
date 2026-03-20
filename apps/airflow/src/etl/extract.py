@@ -5,7 +5,7 @@ from typing import Any
 from .db import get_cursor
 
 
-DATA_PATH = Path(__file__).resolve().parent.parent / "data" / "sample_issues.json"
+DATA_PATH = Path("/opt/airflow/data/sample_issues.json")
 RAW_TABLE = "llm.raw_issues"
 SOURCE_NAME = "sample_issues"
 

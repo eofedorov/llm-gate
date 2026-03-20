@@ -96,29 +96,6 @@ services:
     networks:
       - llm_net
 
-  gateway:
-    build:
-      context: .
-      dockerfile: apps/gateway/Dockerfile
-    ports:
-      - "8000:8000"
-    environment:
-      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/llm_gate
-      LLM_BASE_URL: http://your-llm-provider:port
-      LLM_MODEL: your-llm-model-name
-      MCP_SERVER_URL: http://mcp-server:8001
-      AUDIT_SERVICE_URL: http://audit-service:8003
-      GITHUB_TOKEN: ${GITHUB_TOKEN:-}
-    depends_on:
-      postgres:
-        condition: service_healthy
-      mcp-server:
-        condition: service_started
-      audit-service:
-        condition: service_started
-    networks:
-      - llm_net
-
   airflow-init:
     image: apache/airflow:3.1.8-python3.11
     entrypoint: /bin/bash
@@ -135,13 +112,12 @@ services:
       GATEWAY_URL: http://gateway:8000
       DATABASE_URL: postgresql://postgres:postgres@postgres:5432/llm_gate
     volumes:
-      - ./airflow/dags:/opt/airflow/dags
-      - ./etl:/opt/airflow/etl
+      - ./apps/airflow/src/dags:/opt/airflow/dags
+      - ./apps/airflow/src/etl:/opt/airflow/etl
+      - ./data:/opt/airflow/data
     depends_on:
       postgres:
         condition: service_healthy
-      gateway:
-        condition: service_started
     networks:
       - llm_net
 
@@ -161,13 +137,12 @@ services:
       GATEWAY_URL: http://gateway:8000
       DATABASE_URL: postgresql://postgres:postgres@postgres:5432/llm_gate
     volumes:
-      - ./airflow/dags:/opt/airflow/dags
-      - ./etl:/opt/airflow/etl
+      - ./apps/airflow/src/dags:/opt/airflow/dags
+      - ./apps/airflow/src/etl:/opt/airflow/etl
+      - ./data:/opt/airflow/data
     depends_on:
       postgres:
         condition: service_healthy
-      gateway:
-        condition: service_started
       airflow-init:
         condition: service_completed_successfully
     networks:
@@ -185,13 +160,12 @@ services:
       GATEWAY_URL: http://gateway:8000
       DATABASE_URL: postgresql://postgres:postgres@postgres:5432/llm_gate
     volumes:
-      - ./airflow/dags:/opt/airflow/dags
-      - ./etl:/opt/airflow/etl
+      - ./apps/airflow/src/dags:/opt/airflow/dags
+      - ./apps/airflow/src/etl:/opt/airflow/etl
+      - ./data:/opt/airflow/data
     depends_on:
       postgres:
         condition: service_healthy
-      gateway:
-        condition: service_started
       airflow-init:
         condition: service_completed_successfully
     networks:

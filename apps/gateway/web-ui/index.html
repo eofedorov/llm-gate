@@ -11,6 +11,22 @@
     <h1>База знаний</h1>
   </header>
   <main>
+    <section class="block" id="run-block">
+      <h2>Запуск промпта</h2>
+      <form id="run-form">
+        <label for="run-prompt">Промпт:</label>
+        <select id="run-prompt" name="prompt" required>
+          <option value="" disabled selected>Загружаем…</option>
+        </select>
+        <label for="run-task">Задача:</label>
+        <input type="text" id="run-task" name="task" placeholder="Например: Classify engineering issue">
+        <label for="run-input">Входные данные:</label>
+        <textarea id="run-input" name="input" rows="6" placeholder='JSON или текст. Например: {"title":"...","description":"...","author":"..."}' required></textarea>
+        <button type="submit" id="run-btn">Запустить</button>
+      </form>
+      <div id="run-result" class="result" aria-live="polite"></div>
+    </section>
+
     <section class="block" id="upload-block">
       <h2>Загрузить документы</h2>
       <form id="upload-form">
