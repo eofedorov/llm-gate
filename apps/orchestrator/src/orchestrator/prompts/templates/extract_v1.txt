@@ -5,4 +5,3 @@ Input: {{ input }}
 {% if constraints %}Constraints: {{ constraints }}{% endif %}
 
 {{ output_contract }}
-

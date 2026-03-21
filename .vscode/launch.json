@@ -10,7 +10,8 @@
       "cwd": "${workspaceFolder}",
       "env": {
         "PYTHONPATH": "${workspaceFolder}/apps/gateway/src;${workspaceFolder}/shared/common/src",
-        "AUDIT_SERVICE_URL": "http://localhost:8003"
+        "AUDIT_SERVICE_URL": "http://localhost:8003",
+        "ORCHESTRATOR_URL": "http://localhost:8004"
       },
       "console": "integratedTerminal",
       "justMyCode": false
@@ -24,7 +25,8 @@
       "cwd": "${workspaceFolder}",
       "env": {
         "PYTHONPATH": "${workspaceFolder}/apps/gateway/src;${workspaceFolder}/shared/common/src",
-        "AUDIT_SERVICE_URL": "http://localhost:8003"
+        "AUDIT_SERVICE_URL": "http://localhost:8003",
+        "ORCHESTRATOR_URL": "http://localhost:8004"
       },
       "console": "integratedTerminal",
       "justMyCode": false

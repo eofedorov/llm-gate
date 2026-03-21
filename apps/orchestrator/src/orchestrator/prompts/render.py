@@ -10,7 +10,7 @@ from typing import Any
 
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 
-from gateway.prompts.registry import PromptSpec, TEMPLATES_DIR
+from orchestrator.prompts.registry import PromptSpec, TEMPLATES_DIR
 
 logger = logging.getLogger(__name__)
 
@@ -30,7 +30,6 @@ def get_schema_description(schema_class: type) -> str:
     required = raw.get("required") or []
     defs = raw.get("$defs") or raw.get("definitions") or {}
 
-    # Порядок: сначала обязательные поля, затем остальные
     ordered_names = list(dict.fromkeys([*required, *props.keys()]))
     parts = []
     for name in ordered_names:
@@ -46,11 +45,6 @@ def get_schema_description(schema_class: type) -> str:
 
 
 def _describe_property(name: str, prop: dict[str, Any], defs: dict[str, Any] | None = None) -> str:
-    """
-    Описать одно поле схемы для промпта: тип и ограничения.
-
-    Поддерживаются: array (в т.ч. Entity, вложенные модели по $ref), number (0–1), enum/const, string (с maxLength).
-    """
     defs = defs or {}
     ptype = prop.get("type", "string")
 
@@ -64,13 +58,9 @@ def _describe_property(name: str, prop: dict[str, Any], defs: dict[str, Any] | N
 
 
 def _describe_array_field(name: str, items_schema: dict[str, Any], defs: dict[str, Any] | None = None) -> str:
-    """
-    Описание поля-массива. Для $ref — разрешаем через $defs и описываем поля вложенной модели.
-    """
     defs = defs or {}
     ref = items_schema.get("$ref", "")
     if ref:
-        # "#/$defs/SourceCitation" -> имя "SourceCitation"
         ref_name = ref.split("/")[-1] if isinstance(ref, str) else ""
         if ref_name in defs:
             nested = defs[ref_name]
@@ -90,12 +80,10 @@ def _describe_array_field(name: str, items_schema: dict[str, Any], defs: dict[st
 
 
 def _describe_number_field(name: str, prop: dict[str, Any]) -> str:
-    """Числовое поле (в т.ч. confidence 0–1)."""
     return f'"{name}": <float 0-1>'
 
 
 def _describe_enum_field(name: str, prop: dict[str, Any]) -> str:
-    """Поле с перечислением допустимых значений (enum/const)."""
     enum_vals = prop.get("enum")
     if enum_vals is None and "const" in prop:
         enum_vals = [prop["const"]]
@@ -106,7 +94,6 @@ def _describe_enum_field(name: str, prop: dict[str, Any]) -> str:
 
 
 def _describe_string_field(name: str, prop: dict[str, Any]) -> str:
-    """Строковое поле, опционально с maxLength."""
     max_len = prop.get("maxLength")
     suffix = f", max {max_len} chars" if max_len else ""
     return f'"{name}": "<string>{suffix}"'
@@ -114,6 +101,7 @@ def _describe_string_field(name: str, prop: dict[str, Any]) -> str:
 
 class RenderContext:
     """Контекст для рендера: задача, вход, ограничения, описание схемы вывода, произвольные extras для шаблона."""
+
     def __init__(
         self,
         task: str,
@@ -130,10 +118,6 @@ class RenderContext:
 
 
 def render(spec: PromptSpec, context: RenderContext) -> tuple[str, str]:
-    """
-    Собрать сообщения для LLM: (system_message, user_message).
-    Шаблон рендерится с контекстом; output_contract подставляется в шаблон.
-    """
     env = Environment(
         loader=FileSystemLoader(TEMPLATES_DIR),
         autoescape=select_autoescape(default=False),

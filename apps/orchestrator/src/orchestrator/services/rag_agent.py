@@ -8,11 +8,11 @@ from uuid import UUID
 
 from audit import audit_event, audited_span
 from common.contracts.rag_schemas import AnswerContract
-from gateway.llm import client as llm_client
-from gateway.mcp.client.mcp_client import call_tool as mcp_call_tool
-from gateway.mcp.client.mcp_client import list_tools as mcp_list_tools
-from gateway.prompts.system_prompts import INSUFFICIENT_ANSWER, RAG_AGENT_SYSTEM_PROMPT
-from gateway.services.llm_json import parse_llm_response_or_repair
+from orchestrator.llm import client as llm_client
+from orchestrator.mcp.client.mcp_client import call_tool as mcp_call_tool
+from orchestrator.mcp.client.mcp_client import list_tools as mcp_list_tools
+from orchestrator.prompts.system_prompts import INSUFFICIENT_ANSWER, RAG_AGENT_SYSTEM_PROMPT
+from orchestrator.services.llm_json import parse_llm_response_or_repair
 
 MAX_TOOL_CALLS_PER_REQUEST = 6
 
@@ -36,9 +36,6 @@ def ask(
     mcp_url: str | None = None,
     request: Any = None,
 ) -> AnswerContract:
-    """
-    Agent loop: получить tools из MCP -> цикл LLM + tool_calls (до 6 вызовов) -> разобрать финальный ответ в AnswerContract.
-    """
     logger.info("[AGENT] ask question=%r", question.strip()[:80] if len(question.strip()) > 80 else question.strip())
     tools = mcp_list_tools(mcp_url)
     if not tools:

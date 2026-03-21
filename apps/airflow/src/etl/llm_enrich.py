@@ -10,16 +10,16 @@ from .db import get_cursor
 
 NORM_TABLE = "llm.normalized_issues"
 ENRICH_TABLE = "llm.enriched_issues"
-GATEWAY_URL_ENV = "GATEWAY_URL"
+ORCHESTRATOR_URL_ENV = "ORCHESTRATOR_URL"
 
 
-def _gateway_url() -> str:
-    base = os.getenv(GATEWAY_URL_ENV, "http://localhost:8000")
+def _orchestrator_url() -> str:
+    base = os.getenv(ORCHESTRATOR_URL_ENV, "http://localhost:8004")
     return base.rstrip("/")
 
 
 def _call_run(prompt_name: str, task: str, input_payload: dict[str, Any]) -> dict[str, Any]:
-    url = _gateway_url() + f"/run/{prompt_name}"
+    url = _orchestrator_url() + f"/run/{prompt_name}"
     body = {"task": task, "input": input_payload}
     with httpx.Client(timeout=60.0) as client:
         resp = client.post(url, json=body)

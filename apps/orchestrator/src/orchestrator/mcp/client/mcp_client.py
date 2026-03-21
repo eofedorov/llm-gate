@@ -8,7 +8,7 @@ import httpx
 from mcp import ClientSession
 from mcp.client.streamable_http import streamable_http_client
 
-from gateway.settings import Settings
+from orchestrator.settings import Settings
 
 logger = logging.getLogger(__name__)
 

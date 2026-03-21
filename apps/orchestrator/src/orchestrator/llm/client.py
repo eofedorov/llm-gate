@@ -5,7 +5,7 @@ from typing import Any
 from openai import APIStatusError, OpenAI
 from openai.types.chat import ChatCompletion
 
-from gateway.settings import Settings
+from orchestrator.settings import Settings
 
 logger = logging.getLogger(__name__)
 _settings = Settings()

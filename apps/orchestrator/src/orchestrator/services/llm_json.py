@@ -9,7 +9,7 @@ from typing import Any, TypeVar
 from audit import audit_event, audited_span
 from pydantic import BaseModel
 
-from gateway.prompts.render import get_schema_description
+from orchestrator.prompts.render import get_schema_description
 
 logger = logging.getLogger(__name__)
 
@@ -31,10 +31,6 @@ def extract_json_from_text(text: str) -> str:
 
 
 def parse_and_validate(raw: str, schema_class: type[T]) -> tuple[T | None, str | None]:
-    """
-    Распарсить JSON и провалидировать схемой.
-    Возвращает (model, None) при успехе или (None, error_message) при ошибке.
-    """
     try:
         data = json.loads(raw)
     except json.JSONDecodeError as e:
@@ -55,7 +51,6 @@ def build_repair_messages(
     schema_description_max: int = 1500,
     content_max: int = 4000,
 ) -> list[dict[str, str]]:
-    """Собрать сообщения для одного repair-прохода LLM (system + user)."""
     output_contract = get_schema_description(schema_class)
     return [
         {"role": "system", "content": REPAIR_SYSTEM + "\n\nСхема:\n" + output_contract[:schema_description_max]},
@@ -69,11 +64,6 @@ def parse_llm_response_or_repair(
     schema_class: type[T],
     call_llm: Any,
 ) -> tuple[T | None, str | None]:
-    """
-    Разобрать ответ LLM в модель по схеме; при ошибке — один repair-проход и повторная валидация.
-    Возвращает (model, None) при успехе или (None, diagnostics) при неудаче.
-    call_llm: callable(messages: list[dict]) -> str.
-    """
     parsed = extract_json_from_text(raw_content)
     model, err = parse_and_validate(parsed, schema_class)
     if model is not None:
