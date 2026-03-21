@@ -96,36 +96,11 @@ services:
     networks:
       - llm_net
 
-  airflow-init:
-    image: apache/airflow:3.1.8-python3.11
-    entrypoint: /bin/bash
-    command:
-      - -c
-      - >
-        airflow db migrate
-    environment:
-      AIRFLOW__CORE__EXECUTOR: LocalExecutor
-      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://postgres:postgres@postgres:5432/llm_gate
-      AIRFLOW__CORE__DAGS_FOLDER: /opt/airflow/dags
-      AIRFLOW__CORE__LOAD_EXAMPLES: "False"
-      PYTHONPATH: /opt/airflow/etl
-      GATEWAY_URL: http://gateway:8000
-      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/llm_gate
-    volumes:
-      - ./apps/airflow/src/dags:/opt/airflow/dags
-      - ./apps/airflow/src/etl:/opt/airflow/etl
-      - ./data:/opt/airflow/data
-    depends_on:
-      postgres:
-        condition: service_healthy
-    networks:
-      - llm_net
-
-  airflow-webserver:
+  airflow:
     build:
       context: .
       dockerfile: apps/airflow/Dockerfile
-    command: api-server
+    command: standalone
     ports:
       - "8080:8080"
     environment:
@@ -143,31 +118,6 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-      airflow-init:
-        condition: service_completed_successfully
-    networks:
-      - llm_net
-
-  airflow-scheduler:
-    image: apache/airflow:3.1.8-python3.11
-    command: scheduler
-    environment:
-      AIRFLOW__CORE__EXECUTOR: LocalExecutor
-      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://postgres:postgres@postgres:5432/llm_gate
-      AIRFLOW__CORE__DAGS_FOLDER: /opt/airflow/dags
-      AIRFLOW__CORE__LOAD_EXAMPLES: "False"
-      PYTHONPATH: /opt/airflow/etl
-      GATEWAY_URL: http://gateway:8000
-      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/llm_gate
-    volumes:
-      - ./apps/airflow/src/dags:/opt/airflow/dags
-      - ./apps/airflow/src/etl:/opt/airflow/etl
-      - ./data:/opt/airflow/data
-    depends_on:
-      postgres:
-        condition: service_healthy
-      airflow-init:
-        condition: service_completed_successfully
     networks:
       - llm_net
 
