@@ -4,13 +4,13 @@ import logging
 import httpx
 from fastapi import APIRouter, File, HTTPException, Query, Request, UploadFile
 
-from common.contracts.api_schemas import (
+from contracts.api_schemas import (
     AskRequestBody,
     IngestResponse,
     SearchHit,
     UploadStubResponse,
 )
-from common.contracts.rag_schemas import AnswerContract
+from contracts.rag_schemas import AnswerContract
 from orchestrator.mcp.client.mcp_client import MCPConnectionError, call_tool_async as mcp_call_tool_async
 from orchestrator.services.rag_agent import ask
 from orchestrator.settings import Settings

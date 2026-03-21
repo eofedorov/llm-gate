@@ -9,7 +9,7 @@
       "args": ["gateway.main:app", "--reload", "--host", "127.0.0.1", "--port", "8000"],
       "cwd": "${workspaceFolder}",
       "env": {
-        "PYTHONPATH": "${workspaceFolder}/apps/gateway/src;${workspaceFolder}/shared/common/src",
+        "PYTHONPATH": "${workspaceFolder}/apps/gateway/src;${workspaceFolder}/shared",
         "AUDIT_SERVICE_URL": "http://localhost:8003",
         "ORCHESTRATOR_URL": "http://localhost:8004"
       },
@@ -24,7 +24,7 @@
       "args": ["gateway.main:app", "--host", "127.0.0.1", "--port", "8000"],
       "cwd": "${workspaceFolder}",
       "env": {
-        "PYTHONPATH": "${workspaceFolder}/apps/gateway/src;${workspaceFolder}/shared/common/src",
+        "PYTHONPATH": "${workspaceFolder}/apps/gateway/src;${workspaceFolder}/shared",
         "AUDIT_SERVICE_URL": "http://localhost:8003",
         "ORCHESTRATOR_URL": "http://localhost:8004"
       },

@@ -1,5 +1,5 @@
 """Настройки gateway: URL orchestrator и audit-service."""
-from common.settings import BaseAppSettings
+from settings import BaseAppSettings
 
 
 class Settings(BaseAppSettings):

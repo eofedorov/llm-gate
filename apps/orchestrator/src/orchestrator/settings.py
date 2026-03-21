@@ -1,5 +1,5 @@
 """Настройки orchestrator: LLM, MCP, RAG."""
-from common.settings import BaseAppSettings
+from settings import BaseAppSettings
 
 
 class Settings(BaseAppSettings):

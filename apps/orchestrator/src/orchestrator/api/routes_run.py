@@ -3,7 +3,7 @@ from typing import Any
 
 from fastapi import APIRouter, HTTPException
 
-from common.contracts.api_schemas import RunRequest
+from contracts.api_schemas import RunRequest
 from orchestrator.llm.client import call_llm
 from orchestrator.prompts.registry import get_prompt
 from orchestrator.prompts.render import RenderContext, get_schema_description, render

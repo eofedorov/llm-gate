@@ -7,7 +7,7 @@ from typing import Any
 from uuid import UUID
 
 from audit import audit_event, audited_span
-from common.contracts.rag_schemas import AnswerContract
+from contracts.rag_schemas import AnswerContract
 from orchestrator.llm import client as llm_client
 from orchestrator.mcp.client.mcp_client import call_tool as mcp_call_tool
 from orchestrator.mcp.client.mcp_client import list_tools as mcp_list_tools

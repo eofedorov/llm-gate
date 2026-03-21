@@ -1,7 +1,7 @@
 """Пул соединений Postgres (singleton)."""
 from psycopg_pool import ConnectionPool
 
-from common.settings import BaseAppSettings
+from settings import BaseAppSettings
 
 _pool: ConnectionPool | None = None
 

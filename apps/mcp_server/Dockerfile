@@ -11,7 +11,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends curl \
 RUN pip install --no-cache-dir \
         --index-url https://download.pytorch.org/whl/cpu \
         --extra-index-url https://pypi.org/simple/ \
-        torch sentence-transformers qdrant-client "psycopg[binary,pool]" mcp "uvicorn[standard]"
+        torch sentence-transformers qdrant-client "psycopg[binary,pool]" mcp "uvicorn[standard]" pydantic-settings
 
 ARG RAG_EMBEDDING_MODEL=intfloat/multilingual-e5-small
 ENV HF_HOME=/app/.cache/huggingface
@@ -21,14 +21,13 @@ RUN python -c "from sentence_transformers import SentenceTransformer; import os;
 # Stage app: only app source (rebuilt when apps/mcp_server/src changes).
 FROM deps AS app
 
-COPY shared/common ./shared/common
+COPY shared/settings.py ./shared/settings.py
+COPY shared/contracts ./shared/contracts
 COPY shared/db ./shared/db
 COPY shared/audit ./shared/audit
 COPY apps/mcp_server/src ./src
 
-RUN pip install --no-cache-dir -e ./shared/common -e ./shared/db -e ./shared/audit
-
-ENV PYTHONPATH=/app/src
+ENV PYTHONPATH=/app/src:/app/shared
 # Use pre-downloaded model only; no Hugging Face network calls at runtime.
 ENV HF_HUB_OFFLINE=1
 EXPOSE 8001

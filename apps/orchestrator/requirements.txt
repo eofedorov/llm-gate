@@ -1,6 +1,4 @@
-# Orchestrator. Install from repo root: pip install -e shared/common -e shared/audit -e apps/orchestrator
--e shared/common
--e shared/audit
+# Orchestrator. From repo root: set PYTHONPATH to shared/ and apps/orchestrator/src.
 fastapi>=0.129.0
 uvicorn[standard]>=0.41.0
 pydantic>=2.12.0

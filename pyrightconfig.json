@@ -1,9 +1,9 @@
 {
   "extraPaths": [
-    "shared/db/src",
-    "shared/common/src",
+    "shared",
     "apps/datastore/src",
     "apps/mcp_server/src",
-    "apps/gateway/src"
+    "apps/gateway/src",
+    "apps/orchestrator/src"
   ]
 }

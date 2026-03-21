@@ -1,7 +1,7 @@
-# Gateway thin proxy. Install from repo root: pip install -e shared/common -e shared/audit
--e shared/common
--e shared/audit
+# Gateway thin proxy. From repo root: set PYTHONPATH to shared/ and apps/gateway/src.
 fastapi>=0.129.0
 uvicorn[standard]>=0.41.0
+pydantic>=2.12.0
+pydantic-settings>=2.13.0
 jinja2>=3.1.6
 httpx

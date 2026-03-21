@@ -4,8 +4,8 @@ from typing import Type
 
 from pydantic import BaseModel
 
-from common.contracts.rag_schemas import AnswerContract
-from common.contracts.schemas import ClassifyV1Out, ExtractV1Out
+from contracts.rag_schemas import AnswerContract
+from contracts.schemas import ClassifyV1Out, ExtractV1Out
 
 TEMPLATES_DIR = Path(__file__).resolve().parent / "templates"
 

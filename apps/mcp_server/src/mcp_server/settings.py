@@ -1,9 +1,9 @@
 """Настройки mcp_server: RAG (эмбеддинги, чанки), datastore."""
-from common.settings import BaseAppSettings
+from settings import BaseAppSettings
 
 
 class Settings(BaseAppSettings):
-    """MCP-server-специфичные поля поверх базовых (database_url, qdrant_* из common)."""
+    """MCP-server-специфичные поля поверх базовых (database_url, qdrant_* из settings)."""
 
     audit_service_url: str = ""
     datastore_url: str = ""
