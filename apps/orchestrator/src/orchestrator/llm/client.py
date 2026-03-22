@@ -1,9 +1,15 @@
 import logging
 import os
-from typing import Any
+import random
+import time
+from typing import Any, cast
 
 from openai import APIStatusError, OpenAI
-from openai.types.chat import ChatCompletion
+from openai.types.chat import (
+    ChatCompletion,
+    ChatCompletionMessageParam,
+    ChatCompletionToolUnionParam,
+)
 
 from orchestrator.settings import Settings
 
@@ -11,22 +17,61 @@ logger = logging.getLogger(__name__)
 _settings = Settings()
 
 
-def _log_api_error(e: APIStatusError, *, model: str, messages: list) -> None:
+def _log_api_error(
+    e: APIStatusError,
+    *,
+    model: str,
+    messages: list,
+    level: int = logging.ERROR,
+) -> None:
     url = str(e.response.url) if e.response else _settings.llm_base_url
     body = e.body if hasattr(e, "body") else None
     roles = [m.get("role", "?") for m in messages[:5]]
-    logger.error(
+    logger.log(
+        level,
         "LLM API error: %s %s | url=%s model=%s roles=%s | response_body=%s",
-        e.status_code, type(e).__name__, url, model, roles, body,
+        e.status_code,
+        type(e).__name__,
+        url,
+        model,
+        roles,
+        body,
     )
 
 
+def _is_retriable_llm_http_status(status_code: int) -> bool:
+    """429 и временные ошибки шлюза — повторяем с backoff."""
+    return status_code in (429, 500, 502, 503, 504)
+
+
+def _sleep_before_llm_retry(attempt: int, e: APIStatusError) -> None:
+    """Пауза перед повтором: заголовок Retry-After или экспоненциальный backoff + jitter."""
+    delay: float | None = None
+    if e.response is not None:
+        ra = e.response.headers.get("retry-after")
+        if ra:
+            try:
+                delay = float(ra)
+            except ValueError:
+                pass
+    base = _settings.llm_retry_backoff_base
+    cap = _settings.llm_retry_backoff_max
+    backoff = delay if delay is not None else min(base * (2**attempt), cap)
+    backoff += random.uniform(0, min(1.0, base * 0.5))
+    logger.warning(
+        "LLM retry after %.1fs (attempt %s, status=%s)",
+        backoff,
+        attempt + 1,
+        e.status_code,
+    )
+    time.sleep(backoff)
+
+
 def _make_client() -> OpenAI:
-    base_url = _settings.llm_base_url or None
-    api_key = os.environ.get("GITHUB_TOKEN")
-    if base_url:
-        return OpenAI(base_url=base_url, api_key=api_key)
-    return OpenAI(api_key=api_key)
+    return OpenAI(
+        base_url=_settings.llm_base_url,
+        api_key=os.environ.get("GITHUB_TOKEN", "").strip(),
+    )
 
 
 def call_llm(
@@ -58,7 +103,16 @@ def call_llm(
                     return content.strip()
             return ""
         except APIStatusError as e:
-            _log_api_error(e, model=model, messages=messages)
+            will_retry = attempt < max_retries and _is_retriable_llm_http_status(e.status_code)
+            _log_api_error(
+                e,
+                model=model,
+                messages=messages,
+                level=logging.WARNING if will_retry else logging.ERROR,
+            )
+            if will_retry:
+                _sleep_before_llm_retry(attempt, e)
+                continue
             raise
         except Exception as e:
             logger.error("call_llm attempt=%s failed: %s", attempt + 1, e)
@@ -71,7 +125,7 @@ def call_llm(
     raise last_error or RuntimeError("LLM call failed")
 
 
-def _normalize_message(m: dict[str, Any]) -> dict[str, Any]:
+def _normalize_message(m: dict[str, Any]) -> ChatCompletionMessageParam:
     role = str(m.get("role", "user"))
     out: dict[str, Any] = {"role": role}
     if "content" in m:
@@ -82,7 +136,7 @@ def _normalize_message(m: dict[str, Any]) -> dict[str, Any]:
         out["tool_call_id"] = m["tool_call_id"]
     if "name" in m and m.get("name"):
         out["name"] = m["name"]
-    return out
+    return cast(ChatCompletionMessageParam, out)
 
 
 def call_llm_with_tools(
@@ -106,13 +160,22 @@ def call_llm_with_tools(
             completion = client.chat.completions.create(
                 model=model,
                 messages=[_normalize_message(m) for m in messages],
-                tools=tools,
+                tools=cast(list[ChatCompletionToolUnionParam], tools),
                 max_tokens=max_tokens,
                 timeout=timeout,
             )
             return completion
         except APIStatusError as e:
-            _log_api_error(e, model=model, messages=messages)
+            will_retry = attempt < max_retries and _is_retriable_llm_http_status(e.status_code)
+            _log_api_error(
+                e,
+                model=model,
+                messages=messages,
+                level=logging.WARNING if will_retry else logging.ERROR,
+            )
+            if will_retry:
+                _sleep_before_llm_retry(attempt, e)
+                continue
             raise
         except Exception as e:
             logger.error("call_llm_with_tools attempt=%s failed: %s", attempt + 1, e)

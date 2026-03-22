@@ -136,6 +136,7 @@ services:
       MCP_SERVER_URL: http://mcp-server:8001/mcp
       DATASTORE_URL: http://datastore:8002
       AUDIT_SERVICE_URL: http://audit-service:8003
+      GITHUB_TOKEN: ${GITHUB_TOKEN}
     networks:
       - llm_net
 
@@ -153,6 +154,7 @@ services:
       AIRFLOW__CORE__LOAD_EXAMPLES: "False"
       PYTHONPATH: /opt/airflow
       ORCHESTRATOR_URL: http://orchestrator:8004
+      LLM_ENRICH_SLEEP_SECONDS: ${LLM_ENRICH_SLEEP_SECONDS:-1}
       DATABASE_URL: postgresql://postgres:postgres@postgres:5432/llm_gate
     volumes:
       - ./apps/airflow/src/dags:/opt/airflow/dags

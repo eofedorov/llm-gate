@@ -1,5 +1,6 @@
 import json
 import os
+import time
 from datetime import datetime, timezone
 from typing import Any
 
@@ -11,6 +12,16 @@ from .db import get_cursor
 NORM_TABLE = "llm.normalized_issues"
 ENRICH_TABLE = "llm.enriched_issues"
 ORCHESTRATOR_URL_ENV = "ORCHESTRATOR_URL"
+LLM_ENRICH_SLEEP_SECONDS_ENV = "LLM_ENRICH_SLEEP_SECONDS"
+
+
+def _llm_enrich_sleep_seconds() -> float:
+    """Секунды паузы между вызовами LLM: env LLM_ENRICH_SLEEP_SECONDS, по умолчанию 1."""
+    raw = os.getenv(LLM_ENRICH_SLEEP_SECONDS_ENV, "1").strip()
+    try:
+        return float(raw)
+    except ValueError:
+        return 1.0
 
 
 def _orchestrator_url() -> str:
@@ -49,6 +60,8 @@ def llm_enrich() -> None:
         if not rows:
             return
 
+        sleep_sec = _llm_enrich_sleep_seconds()
+
         for issue_id, title, description, created_at, author in rows:
             input_payload = {
                 "id": issue_id,
@@ -59,7 +72,11 @@ def llm_enrich() -> None:
             }
 
             classify = _call_run("classify_v1", "Classify engineering issue", input_payload)
+            if sleep_sec > 0:
+                time.sleep(sleep_sec)
             extract = _call_run("extract_v1", "Extract entities and summary", input_payload)
+            if sleep_sec > 0:
+                time.sleep(sleep_sec)
 
             entities = extract.get("entities") or []
             summary = extract.get("summary") or ""

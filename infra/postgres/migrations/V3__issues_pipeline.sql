@@ -6,10 +6,11 @@ CREATE TABLE IF NOT EXISTS llm.raw_issues (
   id             SERIAL PRIMARY KEY,
   source         TEXT NOT NULL,
   created_at     TIMESTAMPTZ NOT NULL DEFAULT now(),
-  payload_json   JSONB NOT NULL,
-  CONSTRAINT uq_raw_issues_source_payload_id
-    UNIQUE (source, (payload_json->>'id'))
+  payload_json   JSONB NOT NULL
 );
+
+CREATE UNIQUE INDEX IF NOT EXISTS uq_raw_issues_source_payload_id
+  ON llm.raw_issues (source, ((payload_json->>'id')));
 
 CREATE TABLE IF NOT EXISTS llm.normalized_issues (
   id             INT PRIMARY KEY,

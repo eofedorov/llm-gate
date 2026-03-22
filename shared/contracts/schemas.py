@@ -1,7 +1,7 @@
 """Pydantic-модели ответа (output contracts). Строгая валидация, extra='forbid'."""
-from typing import Literal
+from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 class ClassifyV1Out(BaseModel):
@@ -19,6 +19,18 @@ class Entity(BaseModel):
 
     type: str
     value: str
+
+    @field_validator("value", mode="before")
+    @classmethod
+    def coerce_entity_value_to_str(cls, v: Any) -> str:
+        """LLM иногда отдаёт несколько значений списком; контракт хранит одну строку."""
+        if isinstance(v, str):
+            return v
+        if isinstance(v, list):
+            return ", ".join(str(x) for x in v)
+        if v is None:
+            return ""
+        return str(v)
 
 
 class ExtractV1Out(BaseModel):
