@@ -1,10 +1,6 @@
--- P4: issues pipeline schema (raw_issues, normalized_issues, enriched_issues)
--- Выполняется под postgres в БД llm_gate
+-- P4: issues pipeline (raw_issues, normalized_issues, enriched_issues)
 
--- Используем llm_gate_admin, чтобы сработали default privileges из 02_schema.sql
 SET ROLE llm_gate_admin;
-
--- ====================== Таблицы P4 ======================
 
 CREATE TABLE IF NOT EXISTS llm.raw_issues (
   id             SERIAL PRIMARY KEY,
@@ -35,8 +31,6 @@ CREATE TABLE IF NOT EXISTS llm.enriched_issues (
   processed_at       TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
--- ====================== Allowlist ======================
-
 INSERT INTO llm.sql_allowlist(schema_name, table_name, comment)
 VALUES
   ('llm', 'raw_issues', 'P4: raw issues payloads'),
@@ -46,6 +40,4 @@ ON CONFLICT (schema_name, table_name) DO UPDATE
 SET is_enabled = EXCLUDED.is_enabled,
     comment    = EXCLUDED.comment;
 
--- Возвращаем роль
 RESET ROLE;
-

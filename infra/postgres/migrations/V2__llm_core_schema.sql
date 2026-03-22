@@ -1,11 +1,8 @@
 -- Схема, расширения, таблицы, триггеры, гранты, начальные данные
--- Выполняется под postgres в БД llm_gate (POSTGRES_DB)
 
--- Схема и расширения
 CREATE SCHEMA IF NOT EXISTS llm AUTHORIZATION llm_gate_admin;
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
--- Default privileges (для будущих объектов, создаваемых llm_gate_admin)
 ALTER DEFAULT PRIVILEGES FOR ROLE llm_gate_admin IN SCHEMA llm
   GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO llm_gate_app;
 ALTER DEFAULT PRIVILEGES FOR ROLE llm_gate_admin IN SCHEMA llm
@@ -20,10 +17,7 @@ GRANT CREATE ON SCHEMA llm TO llm_gate_owner;
 GRANT ALL ON SCHEMA llm TO llm_gate_admin;
 REVOKE ALL ON SCHEMA llm FROM PUBLIC;
 
--- Переключаемся на llm_gate_admin, чтобы default privileges сработали
 SET ROLE llm_gate_admin;
-
--- ====================== Таблицы ======================
 
 CREATE TABLE IF NOT EXISTS llm.kb_documents (
   doc_id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -110,8 +104,6 @@ CREATE TABLE IF NOT EXISTS llm.sql_allowlist (
   CONSTRAINT uq_sql_allowlist UNIQUE (schema_name, table_name)
 );
 
--- ====================== Триггер ======================
-
 CREATE OR REPLACE FUNCTION llm.set_updated_at()
 RETURNS TRIGGER AS $$
 BEGIN
@@ -125,17 +117,12 @@ CREATE TRIGGER trg_kb_documents_updated_at
 BEFORE UPDATE ON llm.kb_documents
 FOR EACH ROW EXECUTE FUNCTION llm.set_updated_at();
 
--- ====================== Возврат роли ======================
 RESET ROLE;
 
--- Явные гранты на уже созданные таблицы
 GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA llm TO llm_gate_app;
 GRANT SELECT ON ALL TABLES IN SCHEMA llm TO llm_gate_ro;
 GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA llm TO llm_gate_app, llm_gate_ro;
 
--- ====================== Начальные данные ======================
-
--- Allowlist
 INSERT INTO llm.sql_allowlist(schema_name, table_name, comment)
 VALUES
   ('llm', 'kb_documents', 'Read-only: KB documents registry'),

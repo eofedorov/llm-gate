@@ -1,4 +1,4 @@
--- Роли и пользователи (выполняется под postgres суперпользователем в БД llm_gate)
+-- Роли и пользователи (суперпользователь postgres в БД llm_gate)
 
 DO $$
 BEGIN
@@ -29,5 +29,4 @@ BEGIN
   END IF;
 END$$;
 
--- Передать ownership БД llm_gate (она создана через POSTGRES_DB)
 ALTER DATABASE llm_gate OWNER TO llm_gate_admin;

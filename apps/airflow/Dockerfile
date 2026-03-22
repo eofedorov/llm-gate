@@ -7,8 +7,11 @@ WORKDIR /opt/airflow
 COPY apps/airflow/src/dags ./dags
 COPY apps/airflow/src/etl ./etl
 
+# Метаданные: postgresql+psycopg:// в compose. psycopg2 из базового образа снимаем (pip как команда root запрещён — только python -m pip).
+RUN python -m pip install --no-cache-dir "psycopg[binary]" \
+    && (python -m pip uninstall -y psycopg2-binary || true) \
+    && (python -m pip uninstall -y psycopg2 || true)
 
-ENV PYTHONPATH=/opt/airflow/etl
+ENV PYTHONPATH=/opt/airflow
 
 USER airflow
-

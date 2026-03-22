@@ -5,7 +5,6 @@ services:
       - "5432:5432"
     volumes:
       - ./data/postgres:/var/lib/postgresql/data
-      - ./infra/postgres:/docker-entrypoint-initdb.d
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
@@ -15,6 +14,23 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
+    networks:
+      - llm_net
+
+  flyway:
+    image: flyway/flyway:10
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      FLYWAY_URL: jdbc:postgresql://postgres:5432/llm_gate
+      FLYWAY_USER: postgres
+      FLYWAY_PASSWORD: postgres
+      FLYWAY_BASELINE_ON_MIGRATE: "true"
+      FLYWAY_CONNECT_RETRIES: "10"
+    volumes:
+      - ./infra/postgres/migrations:/flyway/sql
+    command: migrate
     networks:
       - llm_net
 
@@ -82,6 +98,8 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      flyway:
+        condition: service_completed_successfully
       qdrant:
         condition: service_healthy
       datastore:
@@ -130,10 +148,10 @@ services:
       - "8080:8080"
     environment:
       AIRFLOW__CORE__EXECUTOR: LocalExecutor
-      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://postgres:postgres@postgres:5432/llm_gate
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg://postgres:postgres@postgres:5432/llm_gate
       AIRFLOW__CORE__DAGS_FOLDER: /opt/airflow/dags
       AIRFLOW__CORE__LOAD_EXAMPLES: "False"
-      PYTHONPATH: /opt/airflow/etl
+      PYTHONPATH: /opt/airflow
       ORCHESTRATOR_URL: http://orchestrator:8004
       DATABASE_URL: postgresql://postgres:postgres@postgres:5432/llm_gate
     volumes:
@@ -143,6 +161,8 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      flyway:
+        condition: service_completed_successfully
       orchestrator:
         condition: service_healthy
     networks:
