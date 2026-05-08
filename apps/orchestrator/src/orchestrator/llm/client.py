@@ -1,6 +1,5 @@
 import logging
 import os
-import random
 import time
 from typing import Any, cast
 
@@ -39,32 +38,28 @@ def _log_api_error(
     )
 
 
+def _log_response_headers_on_429(e: APIStatusError) -> None:
+    """При 429 логируем заголовки ответа (диагностика rate limit)."""
+    if e.status_code != 429:
+        return
+    if e.response is None:
+        logger.error("LLM 429: нет объекта response, заголовки недоступны")
+        return
+    headers = dict(e.response.headers)
+    logger.error("LLM 429 response headers: %s", headers)
+
+
 def _is_retriable_llm_http_status(status_code: int) -> bool:
-    """429 и временные ошибки шлюза — повторяем с backoff."""
-    return status_code in (429, 500, 502, 503, 504)
+    """Временные ошибки сервера/шлюза — повтор с фиксированной паузой (429 не ретраим)."""
+    return status_code in (500, 502, 503, 504)
 
 
-def _sleep_before_llm_retry(attempt: int, e: APIStatusError) -> None:
-    """Пауза перед повтором: заголовок Retry-After или экспоненциальный backoff + jitter."""
-    delay: float | None = None
-    if e.response is not None:
-        ra = e.response.headers.get("retry-after")
-        if ra:
-            try:
-                delay = float(ra)
-            except ValueError:
-                pass
-    base = _settings.llm_retry_backoff_base
-    cap = _settings.llm_retry_backoff_max
-    backoff = delay if delay is not None else min(base * (2**attempt), cap)
-    backoff += random.uniform(0, min(1.0, base * 0.5))
-    logger.warning(
-        "LLM retry after %.1fs (attempt %s, status=%s)",
-        backoff,
-        attempt + 1,
-        e.status_code,
-    )
-    time.sleep(backoff)
+def _sleep_before_llm_retry() -> None:
+    """Пауза перед повтором после 5xx/таймаута (отдельно от паузы Airflow между задачами)."""
+    sec = _settings.llm_retry_sleep_seconds
+    if sec > 0:
+        logger.warning("LLM retry after 5xx/timeout: sleep %.1fs before next attempt", sec)
+        time.sleep(sec)
 
 
 def _make_client() -> OpenAI:
@@ -103,6 +98,10 @@ def call_llm(
                     return content.strip()
             return ""
         except APIStatusError as e:
+            if e.status_code == 429:
+                _log_api_error(e, model=model, messages=messages, level=logging.ERROR)
+                _log_response_headers_on_429(e)
+                raise
             will_retry = attempt < max_retries and _is_retriable_llm_http_status(e.status_code)
             _log_api_error(
                 e,
@@ -111,7 +110,7 @@ def call_llm(
                 level=logging.WARNING if will_retry else logging.ERROR,
             )
             if will_retry:
-                _sleep_before_llm_retry(attempt, e)
+                _sleep_before_llm_retry()
                 continue
             raise
         except Exception as e:
@@ -120,6 +119,7 @@ def call_llm(
             if attempt == max_retries:
                 raise
             if "timeout" in str(e).lower() or "503" in str(e) or "502" in str(e) or "500" in str(e):
+                _sleep_before_llm_retry()
                 continue
             raise
     raise last_error or RuntimeError("LLM call failed")
@@ -166,6 +166,10 @@ def call_llm_with_tools(
             )
             return completion
         except APIStatusError as e:
+            if e.status_code == 429:
+                _log_api_error(e, model=model, messages=messages, level=logging.ERROR)
+                _log_response_headers_on_429(e)
+                raise
             will_retry = attempt < max_retries and _is_retriable_llm_http_status(e.status_code)
             _log_api_error(
                 e,
@@ -174,7 +178,7 @@ def call_llm_with_tools(
                 level=logging.WARNING if will_retry else logging.ERROR,
             )
             if will_retry:
-                _sleep_before_llm_retry(attempt, e)
+                _sleep_before_llm_retry()
                 continue
             raise
         except Exception as e:
@@ -183,6 +187,7 @@ def call_llm_with_tools(
             if attempt == max_retries:
                 raise
             if "timeout" in str(e).lower() or "503" in str(e) or "502" in str(e) or "500" in str(e):
+                _sleep_before_llm_retry()
                 continue
             raise
     raise last_error or RuntimeError("LLM call failed")

@@ -154,7 +154,8 @@ services:
       AIRFLOW__CORE__LOAD_EXAMPLES: "False"
       PYTHONPATH: /opt/airflow
       ORCHESTRATOR_URL: http://orchestrator:8004
-      LLM_ENRICH_SLEEP_SECONDS: ${LLM_ENRICH_SLEEP_SECONDS:-1}
+      ORCHESTRATOR_HTTP_TIMEOUT: ${ORCHESTRATOR_HTTP_TIMEOUT:-600}
+      LLM_ENRICH_SLEEP_SECONDS: ${LLM_ENRICH_SLEEP_SECONDS:-5}
       DATABASE_URL: postgresql://postgres:postgres@postgres:5432/llm_gate
     volumes:
       - ./apps/airflow/src/dags:/opt/airflow/dags
