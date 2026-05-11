@@ -36,6 +36,7 @@ coverage.xml
 
 # ——— Сборка и пакеты ———
 *.whl
+node_modules/
 
 # ——— Статический анализ ———
 .mypy_cache/

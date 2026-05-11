@@ -5,13 +5,14 @@ AI-шлюз для инженерных задач: классификация/�
 ## Стек
 
 - Python 3.10+
-- FastAPI, Pydantic, Jinja2, OpenAI API
+- FastAPI, Pydantic, Jinja2, Cursor SDK (`@cursor/sdk`); OpenAI-compatible клиент сохранён как PoC backend
 - RAG: Qdrant, sentence-transformers (только в образе MCP-server)
 - Инфраструктура: Docker Compose (Postgres 16, Qdrant)
 
 ## Структура монорепы
 
-- **apps/gateway** — оркестратор (FastAPI): запуск локально через uvicorn; эндпоинты `/run/*`, `/rag/*` (RAG через вызовы MCP).
+- **apps/orchestrator** — оркестратор (FastAPI): эндпоинты `/run/*`, `/rag/*`; LLM/agent execution через локальный TypeScript CLI на Cursor SDK.
+- **apps/gateway** — API-прокси к orchestrator и web UI.
 - **apps/mcp_server** — MCP-сервер (tools: kb_search, kb_get_chunk, sql_read, kb_ingest); в Docker через compose.
 - **apps/datastore** — хранилище документов (FastAPI): upload/read/delete; в Docker через compose; при ingest MCP-server может загружать документы с эндпоинта `/read` вместо диска.
 - **shared/** — `settings.py` (базовые настройки из env), `contracts/` (Pydantic-схемы), `db/` (пул Postgres, запросы), `audit/` (клиент и middleware аудита).
@@ -85,10 +86,10 @@ docker compose -f compose.yaml up -d --build mcp-server
 ## Эндпоинты
 
 - `GET /prompts` — список промптов и версий.
-- `POST /run/{prompt_name}` — выполнить промпт (body: `version`, `task`, `input`, `constraints`).
+- `POST /run/{prompt_name}` — выполнить промпт через Cursor SDK backend (body: `version`, `task`, `input`, `constraints`).
 - `POST /rag/ingest` — индексация базы знаний (через MCP tool `kb_ingest`).
 - `GET /rag/search?q=...&k=5` — поиск чанков (через MCP tool `kb_search`).
-- `POST /rag/ask` — ответ по контракту с цитатами (agent: MCP tools + LLM).
+- `POST /rag/ask` — ответ по контракту с цитатами (Cursor Agent + MCP tools).
 
 ## Конфигурация
 
@@ -98,7 +99,9 @@ docker compose -f compose.yaml up -d --build mcp-server
 |---|---|
 | `DATABASE_URL` | Postgres (общая для mcp_server и db) |
 | `QDRANT_URL`, `QDRANT_COLLECTION` | Qdrant |
-| `LLM_BASE_URL`, `LLM_MODEL`, `LLM_MAX_TOKENS`, `LLM_TIMEOUT`, `LLM_MAX_RETRIES` | Gateway: LLM API |
+| `LLM_BACKEND` | Orchestrator: `cursor_sdk` по умолчанию; `external_poc` включает старый OpenAI-compatible PoC backend |
+| `CURSOR_API_KEY`, `CURSOR_MODEL`, `CURSOR_CLI_TIMEOUT` | Orchestrator: Cursor SDK backend. Локально ключ может читаться из `../hh/.env`; в compose он подключён через `env_file`. |
+| `LLM_BASE_URL`, `LLM_MODEL`, `LLM_MAX_TOKENS`, `LLM_TIMEOUT`, `LLM_MAX_RETRIES` | Orchestrator: настройки старого `external_poc` backend и общих retry/timeout |
 | `MCP_SERVER_URL`, `MCP_TIMEOUT` | Gateway: MCP-сервер |
 | `RAG_EMBEDDING_MODEL`, `RAG_CHUNK_SIZE`, `RAG_CHUNK_OVERLAP`, `RAG_DEFAULT_K` | MCP-server: RAG |
 | `KB_PATH` | MCP-server: путь к базе знаний (в контейнере: `/app/data/docs`). Используется только если `DATASTORE_URL` не задан. |
