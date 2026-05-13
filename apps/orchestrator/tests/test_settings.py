@@ -17,11 +17,12 @@ class SettingsTests(unittest.TestCase):
         self.assertEqual(settings.llm_retry_sleep_seconds, 7.25)
 
     def test_cursor_sdk_defaults(self) -> None:
+        # Без чтения .env из cwd: иначе локальный ключ ломает прогон из корня репозитория.
         with patch.dict(os.environ, {}, clear=True):
-            settings = Settings()
+            settings = Settings(_env_file=None)
         self.assertEqual(settings.llm_backend, "cursor_sdk")
         self.assertEqual(settings.cursor_model, "composer-2")
-        self.assertEqual(settings.cursor_api_key_file, "../hh/.env")
+        self.assertEqual(settings.cursor_api_key, "")
 
 
 if __name__ == "__main__":

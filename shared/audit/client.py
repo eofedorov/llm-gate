@@ -13,6 +13,8 @@ DEFAULT_BATCH_SIZE = 50
 DEFAULT_FLUSH_INTERVAL_SEC = 1.0
 DEFAULT_MAX_QUEUE_SIZE = 1000
 DEFAULT_TIMEOUT_SEC = 0.5
+DEFAULT_FLUSH_MAX_RETRIES = 3
+DEFAULT_FLUSH_RETRY_DELAY_SEC = 0.15
 
 
 class AuditClient:
@@ -32,6 +34,8 @@ class AuditClient:
         service: str = "unknown",
         env: str = "dev",
         sync_mode: bool = False,
+        flush_max_retries: int = DEFAULT_FLUSH_MAX_RETRIES,
+        flush_retry_delay_sec: float = DEFAULT_FLUSH_RETRY_DELAY_SEC,
     ):
         self._base_url = base_url.rstrip("/")
         self._batch_size = batch_size
@@ -41,9 +45,12 @@ class AuditClient:
         self._service = service
         self._env = env
         self._sync_mode = sync_mode
+        self._flush_max_retries = max(1, flush_max_retries)
+        self._flush_retry_delay_sec = flush_retry_delay_sec
         self._queue: asyncio.Queue[AuditEvent] = asyncio.Queue(maxsize=max_queue_size)
         self._worker_task: asyncio.Task[None] | None = None
         self._started = False
+        self._worker_loop: asyncio.AbstractEventLoop | None = None
 
     def _event(
         self,
@@ -84,6 +91,48 @@ class AuditClient:
                 "audit queue full, dropping event type=%s", event.event_type
             )
 
+    def schedule_emit(self, event: AuditEvent) -> None:
+        """
+        Enqueue from sync code or another thread: runs put_nowait on the worker loop.
+        Safe when AuditClient.start() was called on that loop (e.g. FastAPI lifespan).
+        """
+        if not self._started or self._worker_loop is None:
+            logger.warning(
+                "audit client not started, dropping event type=%s", event.event_type
+            )
+            return
+
+        def _try_put() -> None:
+            if self._queue.qsize() >= self._max_queue_size:
+                logger.warning(
+                    "audit queue full (max=%s), dropping event type=%s",
+                    self._max_queue_size,
+                    event.event_type,
+                )
+                return
+            try:
+                self._queue.put_nowait(event)
+            except asyncio.QueueFull:
+                logger.warning(
+                    "audit queue full, dropping event type=%s", event.event_type
+                )
+
+        wl = self._worker_loop
+        try:
+            running = asyncio.get_running_loop()
+        except RuntimeError:
+            running = None
+
+        if running is wl:
+            _try_put()
+        elif wl.is_running():
+            wl.call_soon_threadsafe(_try_put)
+        else:
+            logger.warning(
+                "audit worker loop not running, dropping event type=%s",
+                event.event_type,
+            )
+
     async def event(
         self,
         event_type: str,
@@ -103,9 +152,10 @@ class AuditClient:
         )
         await self.emit(ev)
 
-    async def _flush_batch(self, batch: list[AuditEvent]) -> None:
+    async def _flush_batch(self, batch: list[AuditEvent]) -> bool:
+        """POST batch to audit-service. Returns True if accepted (2xx)."""
         if not batch:
-            return
+            return True
         import httpx
 
         url = f"{self._base_url}/v1/events/batch"
@@ -120,8 +170,11 @@ class AuditClient:
                         r.status_code,
                         r.text[:200],
                     )
+                    return False
+                return True
         except Exception as e:
             logger.warning("audit-service POST failed: %s", e)
+            return False
 
     async def _worker(self) -> None:
         batch: list[AuditEvent] = []
@@ -140,12 +193,33 @@ class AuditClient:
                 now = asyncio.get_event_loop().time()
                 if len(batch) >= self._batch_size or (now - last_flush) >= self._flush_interval:
                     if batch:
-                        await self._flush_batch(batch)
-                        batch = []
+                        for attempt in range(self._flush_max_retries):
+                            ok = await self._flush_batch(batch)
+                            if ok:
+                                batch = []
+                                break
+                            if attempt + 1 < self._flush_max_retries:
+                                await asyncio.sleep(
+                                    self._flush_retry_delay_sec * (attempt + 1)
+                                )
+                        else:
+                            logger.error(
+                                "audit batch dropped after %s failed flush attempts (%s events)",
+                                self._flush_max_retries,
+                                len(batch),
+                            )
+                            batch = []
                     last_flush = now
             except asyncio.CancelledError:
                 if batch:
-                    await self._flush_batch(batch)
+                    for attempt in range(self._flush_max_retries):
+                        ok = await self._flush_batch(batch)
+                        if ok:
+                            break
+                        if attempt + 1 < self._flush_max_retries:
+                            await asyncio.sleep(
+                                self._flush_retry_delay_sec * (attempt + 1)
+                            )
                 raise
             except Exception as e:
                 logger.exception("audit worker error: %s", e)
@@ -155,6 +229,7 @@ class AuditClient:
         if self._started:
             return
         self._started = True
+        self._worker_loop = asyncio.get_running_loop()
         self._worker_task = asyncio.create_task(self._worker())
         logger.debug("audit client worker started")
 
@@ -168,6 +243,7 @@ class AuditClient:
             except asyncio.CancelledError:
                 pass
             self._worker_task = None
+        self._worker_loop = None
 
     def event_sync(
         self,
@@ -188,8 +264,4 @@ class AuditClient:
             severity=severity,
             **attrs,
         )
-        try:
-            loop = asyncio.get_running_loop()
-            loop.create_task(self.emit(ev))
-        except RuntimeError:
-            logger.debug("no running event loop, skipping audit event %s", event_type)
+        self.schedule_emit(ev)

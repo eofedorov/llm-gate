@@ -3,6 +3,7 @@ import json
 import logging
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
+from typing import Any
 
 import httpx
 from fastapi import APIRouter, Request
@@ -26,8 +27,8 @@ _DEFAULT_OVERVIEW = {
     "error_rate": 0.0,
     "insufficient_rate": 0.0,
     "p95_latency_ms": None,
-    "avg_tokens": 0,
-    "avg_tool_calls": 0,
+    "avg_tokens": None,
+    "avg_tool_calls": None,
 }
 _DEFAULT_TIMESERIES = {"labels": [], "datasets": []}
 _DEFAULT_TOOLS = []
@@ -47,32 +48,63 @@ def _timeseries_to_chart(raw: dict | list, dataset_label: str = "Value") -> dict
     return _DEFAULT_TIMESERIES
 
 
+def _merge_timeseries_charts(
+    raw_a: dict | list,
+    label_a: str,
+    raw_b: dict | list,
+    label_b: str,
+) -> dict:
+    """Два списка {bucket, value} в один Chart.js с общими labels (порядок как в raw_a)."""
+    if not (isinstance(raw_a, list) and raw_a and isinstance(raw_a[0], dict) and "bucket" in raw_a[0]):
+        return _DEFAULT_TIMESERIES
+    labels = [row["bucket"] for row in raw_a]
+    data_a = [row.get("value") for row in raw_a]
+    map_b: dict[Any, Any] = {}
+    if isinstance(raw_b, list):
+        for row in raw_b:
+            if isinstance(row, dict) and "bucket" in row:
+                map_b[row["bucket"]] = row.get("value")
+    data_b = [map_b.get(b) for b in labels]
+    return {
+        "labels": labels,
+        "datasets": [
+            {"label": label_a, "data": data_a},
+            {"label": label_b, "data": data_b},
+        ],
+    }
+
+
 def _default_time_range() -> tuple[str, str]:
     """Дефолтный диапазон: последние 24 часа в ISO."""
     now = datetime.now(timezone.utc)
     return (now - timedelta(hours=24)).isoformat(), now.isoformat()
 
 
-async def _proxy_get(path: str, params: dict | None = None) -> dict | list:
-    """GET к audit-service; при ошибке или пустом URL возвращает пустые данные."""
+async def _proxy_get(path: str, params: dict | None = None) -> tuple[Any, str | None]:
+    """
+    GET к audit-service.
+    Возвращает (тело JSON или пустой dict/list, сообщение об ошибке при сбое/пустом URL).
+    """
     base = (_settings.audit_service_url or "").rstrip("/")
     if not base:
-        return {}
+        return {}, "AUDIT_SERVICE_URL не задан — метрики недоступны."
     url = f"{base}{path}"
     try:
         async with httpx.AsyncClient(timeout=10.0) as client:
             r = await client.get(url, params=params or {})
             if r.status_code == 200:
-                return r.json()
+                return r.json(), None
             logger.warning("audit proxy GET %s status=%s", path, r.status_code)
+            return {}, f"audit-service {path}: HTTP {r.status_code}"
     except Exception as e:
         logger.warning("audit proxy GET %s: %s", path, e)
-    return {}
+        return {}, f"audit-service {path}: {e!s}"
 
 
-def _layout_ctx(active: str) -> dict:
+def _layout_ctx(active: str, audit_errors: list[str] | None = None) -> dict:
     return {
         "audit_active": active,
+        "audit_errors": audit_errors or [],
         "nav": [
             ("health", "/audit/", "Health"),
             ("rag", "/audit/rag", "RAG Quality"),
@@ -88,12 +120,24 @@ def _layout_ctx(active: str) -> dict:
 async def audit_health(request: Request):
     """Health dashboard: KPI tiles + latency vs tokens chart."""
     from_ts, to_ts = _default_time_range()
-    overview = await _proxy_get("/v1/metrics/overview", {"from_ts": from_ts, "to_ts": to_ts}) or _DEFAULT_OVERVIEW
-    # run_ok_rate всегда даёт точки при наличии run.finish; run_p95_latency_ms пустой, если duration_ms не задан
-    ts_raw = await _proxy_get("/v1/metrics/timeseries", {"metric": "run_ok_rate", "interval": "1h", "from_ts": from_ts, "to_ts": to_ts})
+    errors: list[str] = []
+    overview_raw, e_ov = await _proxy_get("/v1/metrics/overview", {"from_ts": from_ts, "to_ts": to_ts})
+    if e_ov:
+        errors.append(e_ov)
+    overview = (
+        {**_DEFAULT_OVERVIEW, **overview_raw}
+        if isinstance(overview_raw, dict) and overview_raw
+        else _DEFAULT_OVERVIEW
+    )
+    ts_raw, e1 = await _proxy_get(
+        "/v1/metrics/timeseries",
+        {"metric": "run_ok_rate", "interval": "1h", "from_ts": from_ts, "to_ts": to_ts},
+    )
+    if e1:
+        errors.append(e1)
     ts = _timeseries_to_chart(ts_raw, "Success rate")
     ctx = {
-        **_layout_ctx("health"),
+        **_layout_ctx("health", errors),
         "overview": overview,
         "timeseries": ts,
     }
@@ -104,11 +148,30 @@ async def audit_health(request: Request):
 async def audit_rag(request: Request):
     """RAG Quality: insufficient vs low_top1, sources histogram, top docs."""
     from_ts, to_ts = _default_time_range()
-    overview = await _proxy_get("/v1/metrics/overview", {"from_ts": from_ts, "to_ts": to_ts}) or _DEFAULT_OVERVIEW
-    ts_raw = await _proxy_get("/v1/metrics/timeseries", {"metric": "insufficient_rate", "interval": "1h", "from_ts": from_ts, "to_ts": to_ts})
-    ts = _timeseries_to_chart(ts_raw, "insufficient rate")
+    errors: list[str] = []
+    overview_raw, e_ov = await _proxy_get("/v1/metrics/overview", {"from_ts": from_ts, "to_ts": to_ts})
+    if e_ov:
+        errors.append(e_ov)
+    overview = (
+        {**_DEFAULT_OVERVIEW, **overview_raw}
+        if isinstance(overview_raw, dict) and overview_raw
+        else _DEFAULT_OVERVIEW
+    )
+    ts_ins, e1 = await _proxy_get(
+        "/v1/metrics/timeseries",
+        {"metric": "insufficient_rate", "interval": "1h", "from_ts": from_ts, "to_ts": to_ts},
+    )
+    ts_low, e2 = await _proxy_get(
+        "/v1/metrics/timeseries",
+        {"metric": "low_top1_proxy_rate", "interval": "1h", "from_ts": from_ts, "to_ts": to_ts},
+    )
+    if e1:
+        errors.append(e1)
+    if e2:
+        errors.append(e2)
+    ts = _merge_timeseries_charts(ts_ins, "Insufficient rate", ts_low, "Low top1 (proxy)")
     ctx = {
-        **_layout_ctx("rag"),
+        **_layout_ctx("rag", errors),
         "overview": overview,
         "timeseries": ts,
     }
@@ -119,14 +182,27 @@ async def audit_rag(request: Request):
 async def audit_tools(request: Request):
     """Tools & Policy: tool p95 latency, tool calls vs success, policy blocks."""
     from_ts, to_ts = _default_time_range()
-    tools = await _proxy_get("/v1/metrics/tools", {"from_ts": from_ts, "to_ts": to_ts})
-    if not tools and not isinstance(tools, list):
-        tools = _DEFAULT_TOOLS
-    ts_raw = await _proxy_get("/v1/metrics/timeseries", {"metric": "policy_block_rate", "interval": "1h", "from_ts": from_ts, "to_ts": to_ts})
-    ts = _timeseries_to_chart(ts_raw, "policy block rate")
+    errors: list[str] = []
+    tools_raw, e_tools = await _proxy_get("/v1/metrics/tools", {"from_ts": from_ts, "to_ts": to_ts})
+    if e_tools:
+        errors.append(e_tools)
+    tools = tools_raw if isinstance(tools_raw, list) else _DEFAULT_TOOLS
+    ts_blocks, e1 = await _proxy_get(
+        "/v1/metrics/timeseries",
+        {"metric": "policy_block_rate", "interval": "1h", "from_ts": from_ts, "to_ts": to_ts},
+    )
+    ts_calls, e2 = await _proxy_get(
+        "/v1/metrics/timeseries",
+        {"metric": "tool_calls_avg", "interval": "1h", "from_ts": from_ts, "to_ts": to_ts},
+    )
+    if e1:
+        errors.append(e1)
+    if e2:
+        errors.append(e2)
+    ts = _merge_timeseries_charts(ts_blocks, "Policy block rate", ts_calls, "Tool calls / run (avg)")
     ctx = {
-        **_layout_ctx("tools"),
-        "tools": tools if isinstance(tools, list) else tools.get("tools", _DEFAULT_TOOLS),
+        **_layout_ctx("tools", errors),
+        "tools": tools,
         "timeseries": ts,
     }
     return templates.TemplateResponse(request, "audit/tools.html", ctx)
@@ -136,13 +212,30 @@ async def audit_tools(request: Request):
 async def audit_contracts(request: Request):
     """Contracts & Repair: schema fail vs repair success, finish_reason distribution."""
     from_ts, to_ts = _default_time_range()
-    data = await _proxy_get("/v1/metrics/contracts", {"from_ts": from_ts, "to_ts": to_ts})
-    if not data:
-        data = _DEFAULT_CONTRACTS
-    ts_raw = await _proxy_get("/v1/metrics/timeseries", {"metric": "schema_fail_rate", "interval": "1h", "from_ts": from_ts, "to_ts": to_ts})
-    ts = _timeseries_to_chart(ts_raw, "schema fail rate")
+    errors: list[str] = []
+    data_raw, e_data = await _proxy_get("/v1/metrics/contracts", {"from_ts": from_ts, "to_ts": to_ts})
+    if e_data:
+        errors.append(e_data)
+    data = (
+        {**_DEFAULT_CONTRACTS, **data_raw}
+        if isinstance(data_raw, dict) and data_raw
+        else _DEFAULT_CONTRACTS
+    )
+    ts_schema, e1 = await _proxy_get(
+        "/v1/metrics/timeseries",
+        {"metric": "schema_fail_rate", "interval": "1h", "from_ts": from_ts, "to_ts": to_ts},
+    )
+    ts_repair, e2 = await _proxy_get(
+        "/v1/metrics/timeseries",
+        {"metric": "repair_success_bucket_rate", "interval": "1h", "from_ts": from_ts, "to_ts": to_ts},
+    )
+    if e1:
+        errors.append(e1)
+    if e2:
+        errors.append(e2)
+    ts = _merge_timeseries_charts(ts_schema, "Schema fail rate", ts_repair, "Repair success (per bucket)")
     ctx = {
-        **_layout_ctx("contracts"),
+        **_layout_ctx("contracts", errors),
         "contracts": data,
         "timeseries": ts,
     }
@@ -163,13 +256,15 @@ async def audit_runs(
         params["status"] = status
     if service:
         params["service"] = service
-    runs = await _proxy_get("/v1/runs", params)
-    if not runs and not isinstance(runs, list):
-        runs = _DEFAULT_RUNS
-    if isinstance(runs, dict) and "runs" in runs:
-        runs = runs["runs"]
+    runs_raw, e_runs = await _proxy_get("/v1/runs", params)
+    errors: list[str] = []
+    if e_runs:
+        errors.append(e_runs)
+    runs = runs_raw if isinstance(runs_raw, list) else _DEFAULT_RUNS
+    if isinstance(runs_raw, dict) and "runs" in runs_raw:
+        runs = runs_raw["runs"]
     ctx = {
-        **_layout_ctx("runs"),
+        **_layout_ctx("runs", errors),
         "runs": runs or _DEFAULT_RUNS,
         "filter_status": status,
         "filter_service": service,
@@ -181,13 +276,15 @@ async def audit_runs(
 @router.get("/runs/{trace_id}", response_class=HTMLResponse)
 async def audit_run_trace(request: Request, trace_id: str):
     """Run Trace: вертикальный таймлайн событий по trace_id."""
-    trace = await _proxy_get(f"/v1/runs/{trace_id}/trace")
-    if not trace and not isinstance(trace, list):
-        trace = _DEFAULT_TRACE
-    if isinstance(trace, dict) and "events" in trace:
-        trace = trace["events"]
+    trace_raw, e_tr = await _proxy_get(f"/v1/runs/{trace_id}/trace")
+    errors: list[str] = []
+    if e_tr:
+        errors.append(e_tr)
+    trace = trace_raw if isinstance(trace_raw, list) else _DEFAULT_TRACE
+    if isinstance(trace_raw, dict) and "events" in trace_raw:
+        trace = trace_raw["events"]
     ctx = {
-        **_layout_ctx("runs"),
+        **_layout_ctx("runs", errors),
         "trace_id": trace_id,
         "events": trace or _DEFAULT_TRACE,
     }

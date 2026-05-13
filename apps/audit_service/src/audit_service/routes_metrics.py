@@ -29,7 +29,13 @@ def get_metrics_overview(
 
 @router.get("/timeseries")
 def get_metrics_timeseries(
-    metric: str = Query(..., description="run_ok_rate | run_p95_latency_ms | tokens_avg | tool_calls_avg | insufficient_rate | schema_fail_rate | repair_rate | policy_block_rate"),
+    metric: str = Query(
+        ...,
+        description=(
+            "run_ok_rate | run_p95_latency_ms | tokens_avg | tool_calls_avg | insufficient_rate | "
+            "schema_fail_rate | repair_rate | repair_success_bucket_rate | policy_block_rate | low_top1_proxy_rate"
+        ),
+    ),
     interval: str = Query("5m", description="1m | 5m | 1h"),
     from_ts: str = Query(...),
     to_ts: str = Query(...),

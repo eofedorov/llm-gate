@@ -31,7 +31,8 @@
     .timeline-item::before { content: ""; position: absolute; left: -1.5rem; top: 0.25rem; width: 8px; height: 8px; border-radius: 50%; background: var(--accent); }
     .timeline-item .ts { font-size: 0.8rem; color: var(--muted); }
     .timeline-item .event-type { font-weight: 500; }
-    .timeline-item .attrs { font-size: 0.85rem; color: var(--muted); margin-top: 0.25rem; }
+    .timeline-item .attrs { font-size: 0.85rem; color: var(--muted); margin-top: 0.25rem; white-space: pre-wrap; word-break: break-word; }
+    .audit-banner { background: rgba(248, 81, 73, 0.12); border: 1px solid var(--error); border-radius: 8px; padding: 0.75rem 1rem; margin-bottom: 1rem; color: var(--error); font-size: 0.9rem; }
   </style>
   {% block head %}{% endblock %}
 </head>
@@ -41,6 +42,11 @@
     <a href="{{ href }}" class="{% if audit_active == key %}active{% endif %}">{{ label }}</a>
     {% endfor %}
   </nav>
+  {% if audit_errors %}
+  <div class="audit-banner">
+    {% for err in audit_errors %}<div>{{ err }}</div>{% endfor %}
+  </div>
+  {% endif %}
   {% block content %}{% endblock %}
   {% block scripts %}{% endblock %}
 </body>

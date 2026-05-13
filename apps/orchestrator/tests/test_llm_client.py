@@ -11,7 +11,6 @@ from orchestrator.llm import cursor_sdk_client
 
 class FakeSettings:
     cursor_api_key = "cursor_test_key"
-    cursor_api_key_file = ""
     cursor_model = "composer-2"
     cursor_agent_cwd = str(Path(__file__).resolve().parent)
     cursor_cli_script = str(Path(__file__).resolve())
@@ -96,7 +95,6 @@ class CursorSdkClientTests(unittest.TestCase):
     def test_run_cursor_agent_requires_api_key(self) -> None:
         settings = FakeSettings()
         settings.cursor_api_key = ""
-        settings.cursor_api_key_file = ""
         with patch("orchestrator.llm.cursor_sdk_client.Settings", return_value=settings):
             with self.assertRaises(cursor_sdk_client.CursorSdkError) as ctx:
                 cursor_sdk_client.run_cursor_agent(mode="prompt", messages=[{"role": "user", "content": "hi"}])

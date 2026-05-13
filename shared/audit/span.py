@@ -2,6 +2,7 @@
 
 import asyncio
 import functools
+import logging
 import time
 from datetime import datetime
 from typing import Any, Callable, TypeVar
@@ -10,6 +11,7 @@ from audit.context import get_span_id, get_trace_id, set_span_id
 from audit.schemas import AuditEvent
 
 F = TypeVar("F", bound=Callable[..., Any])
+logger = logging.getLogger(__name__)
 
 # Module-level client; set by app (e.g. middleware) via set_global_client
 _global_client: Any = None
@@ -40,7 +42,7 @@ def audit_event(
 ) -> None:
     """
     Emit an instant audit event (no span). Uses current trace_id/span_id from context.
-    Schedules emit on the running event loop; no-op if no loop (e.g. sync test).
+    Uses AuditClient.schedule_emit when available (sync / threadpool safe); else asyncio task.
     """
     client = get_global_client()
     if client is None:
@@ -56,11 +58,18 @@ def audit_event(
         severity=severity,
         attrs=attrs,
     )
+    schedule = getattr(client, "schedule_emit", None)
+    if callable(schedule):
+        schedule(ev)
+        return
     try:
         loop = asyncio.get_running_loop()
         loop.create_task(_emit(ev))
     except RuntimeError:
-        pass
+        logger.warning(
+            "audit_event skipped (no running loop, no schedule_emit): type=%s",
+            event_type,
+        )
 
 
 def audited_span(
@@ -146,11 +155,17 @@ def audited_span(
                         severity="info",
                         attrs={**(attrs or {}), "name": name},
                     )
-                    try:
-                        loop = asyncio.get_running_loop()
-                        loop.create_task(client.emit(ev_start))
-                    except RuntimeError:
-                        pass
+                    sched = getattr(client, "schedule_emit", None)
+                    if callable(sched):
+                        sched(ev_start)
+                    else:
+                        try:
+                            loop = asyncio.get_running_loop()
+                            loop.create_task(client.emit(ev_start))
+                        except RuntimeError:
+                            logger.warning(
+                                "audited_span sync start skipped (no loop): %s", name
+                            )
                 result = f(*args, **kwargs)
                 return result
             except Exception as e:
@@ -177,11 +192,17 @@ def audited_span(
                             **({"error": error_msg} if error_msg else {}),
                         },
                     )
-                    try:
-                        loop = asyncio.get_running_loop()
-                        loop.create_task(client.emit(ev_finish))
-                    except RuntimeError:
-                        pass
+                    sched = getattr(client, "schedule_emit", None)
+                    if callable(sched):
+                        sched(ev_finish)
+                    else:
+                        try:
+                            loop = asyncio.get_running_loop()
+                            loop.create_task(client.emit(ev_finish))
+                        except RuntimeError:
+                            logger.warning(
+                                "audited_span sync finish skipped (no loop): %s", name
+                            )
 
         if asyncio.iscoroutinefunction(f):
             return async_wrapper  # type: ignore[return-value]

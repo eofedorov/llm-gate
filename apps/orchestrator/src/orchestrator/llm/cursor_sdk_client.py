@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 import json
-import logging
 import os
 import subprocess
 from dataclasses import dataclass
@@ -10,8 +9,6 @@ from pathlib import Path
 from typing import Any, Literal
 
 from orchestrator.settings import Settings
-
-logger = logging.getLogger(__name__)
 
 Mode = Literal["prompt", "rag"]
 
@@ -55,24 +52,6 @@ def _default_cli_script() -> Path:
 def _resolve_path(raw: str, *, base: Path) -> Path:
     path = Path(raw)
     return path if path.is_absolute() else base / path
-
-
-def _read_env_value(path: Path, key: str) -> str:
-    if not path.is_file():
-        return ""
-    try:
-        for line in path.read_text(encoding="utf-8").splitlines():
-            stripped = line.strip()
-            if not stripped or stripped.startswith("#") or "=" not in stripped:
-                continue
-            name, value = stripped.split("=", 1)
-            if name.strip() != key:
-                continue
-            value = value.strip().strip("'").strip('"')
-            return value
-    except OSError as exc:
-        logger.warning("Cannot read Cursor env file %s: %s", path, exc)
-    return ""
 
 
 def _output_preview(text: str, *, limit: int = 1200) -> str:

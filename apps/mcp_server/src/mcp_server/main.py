@@ -1,5 +1,4 @@
 """Точка входа MCP-сервера: Streamable HTTP на порту 8001."""
-from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import JSONResponse
 from starlette.routing import Route
 
@@ -7,26 +6,28 @@ from mcp_server.app import mcp
 
 import mcp_server.tools  # noqa: F401
 
-_audit_client_started = False
+
+async def _mcp_audit_startup() -> None:
+    """Инициализация audit-клиента до приёма запросов (run.start в middleware)."""
+    from audit import AuditClient, set_global_client
+    from mcp_server.settings import Settings
+
+    s = Settings()
+    if not s.audit_service_url:
+        return
+    client = AuditClient(s.audit_service_url, service="mcp_server", env="dev")
+    set_global_client(client)
+    await client.start()
 
 
-async def _ensure_audit_client(request, call_next):
-    global _audit_client_started
-    if not _audit_client_started:
-        from mcp_server.settings import Settings
-        from audit import AuditClient, set_global_client
-        s = Settings()
-        if s.audit_service_url:
-            client = AuditClient(s.audit_service_url, service="mcp_server", env="dev")
-            set_global_client(client)
-            await client.start()
-        _audit_client_started = True
-    return await call_next(request)
+async def _mcp_audit_shutdown() -> None:
+    from audit import set_global_client as _set_global_client
+    from audit.span import get_global_client
 
-
-class EnsureAuditClientMiddleware(BaseHTTPMiddleware):
-    async def dispatch(self, request, call_next):
-        return await _ensure_audit_client(request, call_next)
+    client = get_global_client()
+    if client is not None:
+        await client.stop()
+        _set_global_client(None)
 
 
 async def _health(_):
@@ -35,6 +36,10 @@ async def _health(_):
 
 app = mcp.streamable_http_app()
 app.routes.insert(0, Route("/health", _health, methods=["GET"]))
-from audit import AuditMiddleware
+
+app.add_event_handler("startup", _mcp_audit_startup)
+app.add_event_handler("shutdown", _mcp_audit_shutdown)
+
+from audit import AuditMiddleware  # noqa: E402
+
 app.add_middleware(AuditMiddleware)
-app.add_middleware(EnsureAuditClientMiddleware)

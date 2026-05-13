@@ -1,6 +1,7 @@
 """SQL-запросы для метрик и drill-down по events."""
 from __future__ import annotations
 
+import json
 import re
 import sqlite3
 from typing import Any
@@ -22,6 +23,23 @@ def _where_clause(service: str | None) -> tuple[str, list[Any]]:
     return " ", []
 
 
+def _service_clause(alias: str, service: str | None) -> tuple[str, list[Any]]:
+    """Фильтр service для таблицы с алиасом (rf, t, e, …)."""
+    if service:
+        return f" AND {alias}.service = ? ", [service]
+    return " ", []
+
+
+def _insufficient_exists_sql(alias: str = "rf") -> str:
+    """EXISTS: decision insufficient_context по тому же trace_id."""
+    return f"""EXISTS (
+        SELECT 1 FROM events AS d
+        WHERE d.trace_id = {alias}.trace_id
+          AND d.event_type = 'decision'
+          AND json_extract(d.attrs_json, '$.status') = 'insufficient_context'
+    )"""
+
+
 def get_overview(
     conn: sqlite3.Connection,
     from_ts: str,
@@ -30,24 +48,30 @@ def get_overview(
 ) -> dict[str, Any]:
     """
     KPI по run.finish: total_runs, ok_rate, error_rate, insufficient_rate,
-    p95_latency_ms, avg_tokens, avg_tool_calls.
+    p95_latency_ms, avg_tokens (из attrs run.finish при наличии),
+    avg_tool_calls (среднее число tool.call.finish на trace с run.finish).
+    insufficient_rate: decision.status=insufficient_context по trace_id или legacy attrs.
     """
     from_ts = _normalize_ts(from_ts)
     to_ts = _normalize_ts(to_ts)
     w, p = _where_clause(service)
-    params = [from_ts, to_ts] + p
-    base = """
+    w_rf, p_rf = _service_clause("rf", service)
+    params = [from_ts, to_ts] + p_rf
+    base = f"""
         SELECT
             COUNT(*) AS total_runs,
-            SUM(CASE WHEN status = 'ok' THEN 1 ELSE 0 END) AS ok_count,
-            SUM(CASE WHEN status = 'error' OR status = 'failed' THEN 1 ELSE 0 END) AS error_count,
-            AVG(duration_ms) AS avg_latency_ms,
-            AVG(CAST(json_extract(attrs_json, '$.tokens_total') AS REAL)) AS avg_tokens,
-            AVG(CAST(json_extract(attrs_json, '$.tool_calls') AS REAL)) AS avg_tool_calls,
-            SUM(CASE WHEN json_extract(attrs_json, '$.insufficient') = 1 OR json_extract(attrs_json, '$.insufficient') = true THEN 1 ELSE 0 END) AS insufficient_count
-        FROM events
-        WHERE event_type = 'run.finish' AND ts >= ? AND ts <= ?
-    """ + w
+            SUM(CASE WHEN rf.status = 'ok' THEN 1 ELSE 0 END) AS ok_count,
+            SUM(CASE WHEN rf.status = 'error' OR rf.status = 'failed' THEN 1 ELSE 0 END) AS error_count,
+            AVG(rf.duration_ms) AS avg_latency_ms,
+            AVG(CASE WHEN json_extract(rf.attrs_json, '$.tokens_total') IS NOT NULL
+                THEN CAST(json_extract(rf.attrs_json, '$.tokens_total') AS REAL) END) AS avg_tokens,
+            SUM(CASE WHEN {_insufficient_exists_sql('rf')} OR
+                json_extract(rf.attrs_json, '$.insufficient') IN (1, 'true', 'True') OR
+                json_extract(rf.attrs_json, '$.finish_reason') IN ('parse_failed', 'error')
+                THEN 1 ELSE 0 END) AS insufficient_count
+        FROM events AS rf
+        WHERE rf.event_type = 'run.finish' AND rf.ts >= ? AND rf.ts <= ?
+    """ + w_rf
     row = conn.execute(base, params).fetchone()
     if not row or row["total_runs"] == 0:
         return {
@@ -64,7 +88,6 @@ def get_overview(
     error_rate = row["error_count"] / total if total else 0.0
     insufficient_rate = row["insufficient_count"] / total if total else 0.0
 
-    # p95 latency: fetch ordered durations and take 95th percentile in Python
     p95_params = [from_ts, to_ts] + p
     durations = [
         r[0]
@@ -72,7 +95,9 @@ def get_overview(
             """
             SELECT duration_ms FROM events
             WHERE event_type = 'run.finish' AND duration_ms IS NOT NULL AND ts >= ? AND ts <= ?
-            """ + w + " ORDER BY duration_ms",
+            """
+            + w
+            + " ORDER BY duration_ms",
             p95_params,
         ).fetchall()
     ]
@@ -81,6 +106,29 @@ def get_overview(
         idx = max(0, int(len(durations) * 0.95) - 1)
         p95_val = durations[idx]
 
+    # Среднее число tool.call.finish на run (по trace_id с run.finish в окне; без фильтра service на t — tools часто с другого сервиса)
+    w_rf2, p_rf2 = _service_clause("rf", service)
+    avg_tool_row = conn.execute(
+        f"""
+        SELECT AVG(tc.cnt) AS avg_tool_calls FROM (
+            SELECT COUNT(*) AS cnt
+            FROM events AS t
+            WHERE t.event_type = 'tool.call.finish'
+              AND t.ts >= ? AND t.ts <= ?
+              AND EXISTS (
+                SELECT 1 FROM events AS rf
+                WHERE rf.trace_id = t.trace_id
+                  AND rf.event_type = 'run.finish'
+                  AND rf.ts >= ? AND rf.ts <= ?
+                  {w_rf2}
+              )
+            GROUP BY t.trace_id
+        ) AS tc
+        """,
+        [from_ts, to_ts, from_ts, to_ts] + p_rf2,
+    ).fetchone()
+    avg_tool_calls = avg_tool_row["avg_tool_calls"] if avg_tool_row else None
+
     return {
         "total_runs": total,
         "ok_rate": round(ok_rate, 4),
@@ -88,19 +136,19 @@ def get_overview(
         "insufficient_rate": round(insufficient_rate, 4),
         "p95_latency_ms": p95_val,
         "avg_tokens": round(row["avg_tokens"], 2) if row["avg_tokens"] is not None else None,
-        "avg_tool_calls": round(row["avg_tool_calls"], 2) if row["avg_tool_calls"] is not None else None,
+        "avg_tool_calls": round(avg_tool_calls, 2) if avg_tool_calls is not None else None,
     }
 
 
-def _bucket_expr(interval: str) -> str:
-    """Возвращает SQL-выражение для группировки по интервалу (например 5m -> 300 сек)."""
+def _bucket_expr(interval: str, ts_col: str = "ts") -> str:
+    """SQL-выражение bucket по времени."""
     if interval == "1m":
-        return "strftime('%Y-%m-%d %H:%M', ts)"
+        return f"strftime('%Y-%m-%d %H:%M', {ts_col})"
     if interval == "5m":
-        return "datetime((strftime('%s', ts) / 300) * 300, 'unixepoch')"
+        return f"datetime((strftime('%s', {ts_col}) / 300) * 300, 'unixepoch')"
     if interval == "1h":
-        return "strftime('%Y-%m-%d %H:00', ts)"
-    return "datetime((strftime('%s', ts) / 300) * 300, 'unixepoch')"
+        return f"strftime('%Y-%m-%d %H:00', {ts_col})"
+    return f"datetime((strftime('%s', {ts_col}) / 300) * 300, 'unixepoch')"
 
 
 def get_timeseries(
@@ -113,89 +161,134 @@ def get_timeseries(
 ) -> list[dict[str, Any]]:
     """
     Точки для графиков. metric: run_ok_rate, run_p95_latency_ms, tokens_avg,
-    tool_calls_avg, insufficient_rate, schema_fail_rate, repair_rate, policy_block_rate.
+    tool_calls_avg, insufficient_rate, schema_fail_rate, repair_rate, repair_success_bucket_rate,
+    policy_block_rate, low_top1_proxy_rate (заглушка 0 — нет поля top1 в событиях).
     """
     from_ts = _normalize_ts(from_ts)
     to_ts = _normalize_ts(to_ts)
-    bucket_sql = _bucket_expr(interval)
-    w, p = _where_clause(service)
-    params = [from_ts, to_ts] + p
+    bucket_sql = _bucket_expr(interval, "rf.ts")
+    w_rf, p_rf = _service_clause("rf", service)
+    w_e, p_e = _service_clause("e", service)
+    params: list[Any] = [from_ts, to_ts] + p_rf
 
     if metric == "run_ok_rate":
         q = f"""
             SELECT {bucket_sql} AS bucket,
-                   CAST(SUM(CASE WHEN status = 'ok' THEN 1 ELSE 0 END) AS REAL) / NULLIF(COUNT(*), 0) AS value
-            FROM events
-            WHERE event_type = 'run.finish' AND ts >= ? AND ts <= ?
-            """ + w + f"""
+                   CAST(SUM(CASE WHEN rf.status = 'ok' THEN 1 ELSE 0 END) AS REAL) / NULLIF(COUNT(*), 0) AS value
+            FROM events AS rf
+            WHERE rf.event_type = 'run.finish' AND rf.ts >= ? AND rf.ts <= ?
+            {w_rf}
             GROUP BY {bucket_sql}
             ORDER BY bucket
             """
     elif metric == "run_p95_latency_ms":
-        # По bucket нужен p95 — упрощённо: среднее по бакету
         q = f"""
-            SELECT {bucket_sql} AS bucket, AVG(duration_ms) AS value
-            FROM events
-            WHERE event_type = 'run.finish' AND duration_ms IS NOT NULL AND ts >= ? AND ts <= ?
-            """ + w + f"""
+            SELECT {bucket_sql} AS bucket, AVG(rf.duration_ms) AS value
+            FROM events AS rf
+            WHERE rf.event_type = 'run.finish' AND rf.duration_ms IS NOT NULL AND rf.ts >= ? AND rf.ts <= ?
+            {w_rf}
             GROUP BY {bucket_sql}
             ORDER BY bucket
             """
     elif metric == "tokens_avg":
         q = f"""
-            SELECT {bucket_sql} AS bucket, AVG(CAST(json_extract(attrs_json, '$.tokens_total') AS REAL)) AS value
-            FROM events
-            WHERE event_type = 'run.finish' AND ts >= ? AND ts <= ?
-            """ + w + f"""
+            SELECT {bucket_sql} AS bucket,
+                   AVG(CAST(json_extract(rf.attrs_json, '$.tokens_total') AS REAL)) AS value
+            FROM events AS rf
+            WHERE rf.event_type = 'run.finish' AND rf.ts >= ? AND rf.ts <= ?
+            {w_rf}
             GROUP BY {bucket_sql}
             ORDER BY bucket
             """
     elif metric == "tool_calls_avg":
         q = f"""
-            SELECT {bucket_sql} AS bucket, AVG(CAST(json_extract(attrs_json, '$.tool_calls') AS REAL)) AS value
-            FROM events
-            WHERE event_type = 'run.finish' AND ts >= ? AND ts <= ?
-            """ + w + f"""
-            GROUP BY {bucket_sql}
+            SELECT b.bucket AS bucket, AVG(b.tool_n) AS value FROM (
+                SELECT {bucket_sql} AS bucket,
+                       (SELECT COUNT(*) FROM events AS t
+                        WHERE t.trace_id = rf.trace_id
+                          AND t.event_type = 'tool.call.finish'
+                          AND t.ts >= ? AND t.ts <= ?
+                       ) AS tool_n
+                FROM events AS rf
+                WHERE rf.event_type = 'run.finish' AND rf.ts >= ? AND rf.ts <= ?
+                {w_rf}
+            ) AS b
+            GROUP BY b.bucket
             ORDER BY bucket
             """
+        params = [from_ts, to_ts, from_ts, to_ts] + p_rf
     elif metric == "insufficient_rate":
+        ins = _insufficient_exists_sql("rf")
         q = f"""
             SELECT {bucket_sql} AS bucket,
-                   CAST(SUM(CASE WHEN json_extract(attrs_json, '$.insufficient') IN (1, true) THEN 1 ELSE 0 END) AS REAL) / NULLIF(COUNT(*), 0) AS value
-            FROM events
-            WHERE event_type = 'run.finish' AND ts >= ? AND ts <= ?
-            """ + w + f"""
+                   CAST(SUM(CASE WHEN {ins} OR
+                     json_extract(rf.attrs_json, '$.insufficient') IN (1, 'true', 'True') OR
+                     json_extract(rf.attrs_json, '$.finish_reason') IN ('parse_failed', 'error')
+                     THEN 1 ELSE 0 END) AS REAL) / NULLIF(COUNT(*), 0) AS value
+            FROM events AS rf
+            WHERE rf.event_type = 'run.finish' AND rf.ts >= ? AND rf.ts <= ?
+            {w_rf}
             GROUP BY {bucket_sql}
             ORDER BY bucket
             """
     elif metric == "schema_fail_rate":
+        b = _bucket_expr(interval, "e.ts")
         q = f"""
-            SELECT {bucket_sql} AS bucket,
-                   CAST(SUM(CASE WHEN json_extract(attrs_json, '$.schema_validation') = 'fail' THEN 1 ELSE 0 END) AS REAL) / NULLIF(COUNT(*), 0) AS value
-            FROM events
-            WHERE event_type IN ('run.finish', 'llm.call.finish') AND ts >= ? AND ts <= ?
-            """ + w + f"""
-            GROUP BY {bucket_sql}
+            SELECT {b} AS bucket,
+                   CAST(SUM(CASE WHEN json_extract(e.attrs_json, '$.result') = 'fail' THEN 1 ELSE 0 END) AS REAL)
+                   / NULLIF(COUNT(*), 0) AS value
+            FROM events AS e
+            WHERE e.event_type = 'schema_validation' AND e.ts >= ? AND e.ts <= ?
+            {w_e}
+            GROUP BY {b}
             ORDER BY bucket
             """
+        params = [from_ts, to_ts] + p_e
     elif metric == "repair_rate":
+        b = _bucket_expr(interval, "e.ts")
         q = f"""
-            SELECT {bucket_sql} AS bucket,
-                   CAST(SUM(CASE WHEN json_extract(attrs_json, '$.repair') = 1 OR json_extract(attrs_json, '$.repair') = true THEN 1 ELSE 0 END) AS REAL) / NULLIF(COUNT(*), 0) AS value
-            FROM events
-            WHERE event_type IN ('run.finish', 'llm.call.finish') AND ts >= ? AND ts <= ?
-            """ + w + f"""
-            GROUP BY {bucket_sql}
+            SELECT {b} AS bucket,
+                   CAST(SUM(CASE WHEN json_extract(e.attrs_json, '$.attempted') IN (1, 'true', 'True') THEN 1 ELSE 0 END) AS REAL)
+                   / NULLIF(COUNT(*), 0) AS value
+            FROM events AS e
+            WHERE e.event_type = 'repair' AND e.ts >= ? AND e.ts <= ?
+            {w_e}
+            GROUP BY {b}
             ORDER BY bucket
             """
-    elif metric == "policy_block_rate":
+        params = [from_ts, to_ts] + p_e
+    elif metric == "repair_success_bucket_rate":
+        b = _bucket_expr(interval, "e.ts")
         q = f"""
-            SELECT {bucket_sql} AS bucket,
-                   CAST(SUM(CASE WHEN event_type = 'policy.blocked' THEN 1 ELSE 0 END) AS REAL) / NULLIF(COUNT(*), 0) AS value
-            FROM events
-            WHERE ts >= ? AND ts <= ?
-            """ + w + f"""
+            SELECT {b} AS bucket,
+                   CAST(SUM(CASE WHEN json_extract(e.attrs_json, '$.success') IN (1, 'true', 'True') THEN 1 ELSE 0 END) AS REAL)
+                   / NULLIF(COUNT(*), 0) AS value
+            FROM events AS e
+            WHERE e.event_type = 'repair' AND e.ts >= ? AND e.ts <= ?
+            {w_e}
+            GROUP BY {b}
+            ORDER BY bucket
+            """
+        params = [from_ts, to_ts] + p_e
+    elif metric == "policy_block_rate":
+        b = _bucket_expr(interval, "e.ts")
+        q = f"""
+            SELECT {b} AS bucket,
+                   CAST(SUM(CASE WHEN e.event_type = 'policy.blocked' THEN 1 ELSE 0 END) AS REAL) / NULLIF(COUNT(*), 0) AS value
+            FROM events AS e
+            WHERE e.ts >= ? AND e.ts <= ?
+            {w_e}
+            GROUP BY {b}
+            ORDER BY bucket
+            """
+        params = [from_ts, to_ts] + p_e
+    elif metric == "low_top1_proxy_rate":
+        # Нет отдельных событий с top1 в БД — стабильные нули по бакетам run.finish
+        q = f"""
+            SELECT {bucket_sql} AS bucket, 0.0 AS value
+            FROM events AS rf
+            WHERE rf.event_type = 'run.finish' AND rf.ts >= ? AND rf.ts <= ?
+            {w_rf}
             GROUP BY {bucket_sql}
             ORDER BY bucket
             """
@@ -222,10 +315,10 @@ def get_tools(
             tool_name,
             COUNT(*) AS call_count,
             AVG(duration_ms) AS avg_latency_ms,
-            SUM(CASE WHEN status = 'error' OR status = 'failed' THEN 1 ELSE 0 END) AS error_count,
-            SUM(CASE WHEN json_extract(attrs_json, '$.blocked') = 1 OR json_extract(attrs_json, '$.blocked') = true THEN 1 ELSE 0 END) AS block_count
+            SUM(CASE WHEN status IN ('error', 'failed') THEN 1 ELSE 0 END) AS error_count,
+            SUM(CASE WHEN status = 'blocked' THEN 1 ELSE 0 END) AS block_count
         FROM events
-        WHERE tool_name IS NOT NULL AND tool_name != '' AND ts >= ? AND ts <= ?
+        WHERE event_type = 'tool.call.finish' AND tool_name IS NOT NULL AND tool_name != '' AND ts >= ? AND ts <= ?
     """ + w + """
         GROUP BY tool_name
         ORDER BY call_count DESC
@@ -237,7 +330,7 @@ def get_tools(
         out.append({
             "tool_name": row["tool_name"],
             "call_count": total,
-            "p95_latency_ms": row["avg_latency_ms"],  # упрощённо avg вместо p95
+            "p95_latency_ms": row["avg_latency_ms"],
             "error_rate": round((row["error_count"] or 0) / total, 4) if total else 0.0,
             "block_rate": round((row["block_count"] or 0) / total, 4) if total else 0.0,
         })
@@ -250,44 +343,45 @@ def get_contracts(
     to_ts: str,
     service: str | None = None,
 ) -> dict[str, Any]:
-    """schema_fail_rate, repair_rate, repair_success_rate, finish_reason distribution."""
+    """schema_fail_rate, repair_rate, repair_success_rate по событиям schema_validation / repair; finish_reason с run.finish."""
     from_ts = _normalize_ts(from_ts)
     to_ts = _normalize_ts(to_ts)
     w, p = _where_clause(service)
     params = [from_ts, to_ts] + p
 
-    total_finish = conn.execute(
-        "SELECT COUNT(*) AS n FROM events WHERE event_type = 'run.finish' AND ts >= ? AND ts <= ?" + w,
+    total_schema = conn.execute(
+        "SELECT COUNT(*) AS n FROM events WHERE event_type = 'schema_validation' AND ts >= ? AND ts <= ?" + w,
         params,
     ).fetchone()["n"] or 0
 
     schema_fail = conn.execute(
         """
         SELECT COUNT(*) AS n FROM events
-        WHERE event_type IN ('run.finish', 'llm.call.finish') AND ts >= ? AND ts <= ?
-        """ + w + " AND json_extract(attrs_json, '$.schema_validation') = 'fail'",
+        WHERE event_type = 'schema_validation' AND ts >= ? AND ts <= ?
+        """
+        + w
+        + " AND json_extract(attrs_json, '$.result') = 'fail'",
         params,
     ).fetchone()["n"] or 0
 
     repair_count = conn.execute(
         """
         SELECT COUNT(*) AS n FROM events
-        WHERE event_type IN ('run.finish', 'llm.call.finish') AND ts >= ? AND ts <= ?
-        """ + w + " AND (json_extract(attrs_json, '$.repair') = 1 OR json_extract(attrs_json, '$.repair') = true)",
+        WHERE event_type = 'repair' AND ts >= ? AND ts <= ?
+        """
+        + w
+        + " AND json_extract(attrs_json, '$.attempted') IN (1, 'true', 'True')",
         params,
     ).fetchone()["n"] or 0
 
     repair_success = conn.execute(
         """
         SELECT COUNT(*) AS n FROM events
-        WHERE event_type IN ('run.finish', 'llm.call.finish') AND ts >= ? AND ts <= ?
-        """ + w + " AND (json_extract(attrs_json, '$.repair') = 1 OR json_extract(attrs_json, '$.repair') = true)"
-        + " AND json_extract(attrs_json, '$.repair_success') IN (1, true)",
-        params,
-    ).fetchone()["n"] or 0
-
-    total_checked = conn.execute(
-        "SELECT COUNT(*) AS n FROM events WHERE event_type IN ('run.finish', 'llm.call.finish') AND ts >= ? AND ts <= ?" + w,
+        WHERE event_type = 'repair' AND ts >= ? AND ts <= ?
+        """
+        + w
+        + " AND json_extract(attrs_json, '$.attempted') IN (1, 'true', 'True')"
+        + " AND json_extract(attrs_json, '$.success') IN (1, 'true', 'True')",
         params,
     ).fetchone()["n"] or 0
 
@@ -296,7 +390,9 @@ def get_contracts(
         SELECT json_extract(attrs_json, '$.finish_reason') AS reason, COUNT(*) AS cnt
         FROM events
         WHERE event_type = 'run.finish' AND ts >= ? AND ts <= ?
-        """ + w + """
+        """
+        + w
+        + """
         GROUP BY reason
         ORDER BY cnt DESC
         """,
@@ -309,8 +405,8 @@ def get_contracts(
     ]
 
     return {
-        "schema_fail_rate": round(schema_fail / total_checked, 4) if total_checked else 0.0,
-        "repair_rate": round(repair_count / total_checked, 4) if total_checked else 0.0,
+        "schema_fail_rate": round(schema_fail / total_schema, 4) if total_schema else 0.0,
+        "repair_rate": round(repair_count / total_schema, 4) if total_schema else 0.0,
         "repair_success_rate": round(repair_success / repair_count, 4) if repair_count else 0.0,
         "finish_reason": finish_reason_dist,
     }
@@ -327,27 +423,46 @@ def get_runs_list(
     """Список runs (run.finish): trace_id, ts, status, duration_ms, tokens_total, tool_calls, top1_score."""
     from_ts = _normalize_ts(from_ts)
     to_ts = _normalize_ts(to_ts)
-    w, p = _where_clause(service)
-    if status:
-        w += " AND status = ? "
-    params: list[Any] = [from_ts, to_ts] + p + ([status] if status else []) + [limit]
-    q = """
+    w_rf, p_rf = _service_clause("rf", service)
+
+    insufficient_sql = (
+        "(" + _insufficient_exists_sql("rf") + " OR "
+        "json_extract(rf.attrs_json, '$.insufficient') IN (1, 'true', 'True') OR "
+        "json_extract(rf.attrs_json, '$.finish_reason') IN ('parse_failed', 'error'))"
+    )
+
+    status_clause = ""
+    status_params: list[Any] = []
+    if status == "insufficient":
+        status_clause = f" AND {insufficient_sql} "
+    elif status:
+        status_clause = " AND rf.status = ? "
+        status_params = [status]
+
+    q = f"""
         SELECT
-            trace_id,
-            ts,
-            status,
-            duration_ms,
-            json_extract(attrs_json, '$.tokens_total') AS tokens_total,
-            json_extract(attrs_json, '$.tool_calls') AS tool_calls,
-            json_extract(attrs_json, '$.top1_score') AS top1_score,
-            service
-        FROM events
-        WHERE event_type = 'run.finish' AND ts >= ? AND ts <= ?
-    """ + w + """
-        ORDER BY ts DESC
+            rf.trace_id,
+            rf.ts,
+            rf.status,
+            rf.duration_ms,
+            json_extract(rf.attrs_json, '$.tokens_total') AS tokens_total,
+            (SELECT COUNT(*) FROM events AS t
+             WHERE t.trace_id = rf.trace_id AND t.event_type = 'tool.call.finish'
+               AND t.ts >= ? AND t.ts <= ?) AS tool_calls,
+            json_extract(rf.attrs_json, '$.top1_score') AS top1_score,
+            rf.service
+        FROM events AS rf
+        WHERE rf.event_type = 'run.finish' AND rf.ts >= ? AND rf.ts <= ?
+        {w_rf}
+        {status_clause}
+        ORDER BY rf.ts DESC
         LIMIT ?
     """
-    rows = conn.execute(q, params).fetchall()
+    list_params: list[Any] = (
+        [from_ts, to_ts, from_ts, to_ts] + p_rf + status_params + [limit]
+    )
+
+    rows = conn.execute(q, list_params).fetchall()
     return [
         {
             "trace_id": row["trace_id"],
@@ -364,7 +479,7 @@ def get_runs_list(
 
 
 def get_trace_events(conn: sqlite3.Connection, trace_id: str) -> list[dict[str, Any]]:
-    """Все события по trace_id в хронологическом порядке."""
+    """Все события по trace_id в хронологическом порядке; attrs — dict."""
     rows = conn.execute(
         """
         SELECT ts, trace_id, service, env, event_type, span_id, parent_span_id,
@@ -375,8 +490,18 @@ def get_trace_events(conn: sqlite3.Connection, trace_id: str) -> list[dict[str, 
         """,
         (trace_id,),
     ).fetchall()
-    return [
-        {
+    out: list[dict[str, Any]] = []
+    for row in rows:
+        raw = row["attrs_json"]
+        attrs: Any
+        if raw is None or raw == "":
+            attrs = {}
+        else:
+            try:
+                attrs = json.loads(raw)
+            except json.JSONDecodeError:
+                attrs = {"_raw": raw}
+        out.append({
             "ts": row["ts"],
             "trace_id": row["trace_id"],
             "service": row["service"],
@@ -385,10 +510,9 @@ def get_trace_events(conn: sqlite3.Connection, trace_id: str) -> list[dict[str, 
             "span_id": row["span_id"],
             "parent_span_id": row["parent_span_id"],
             "severity": row["severity"],
-            "attrs": row["attrs_json"],
+            "attrs": attrs,
             "duration_ms": row["duration_ms"],
             "status": row["status"],
             "tool_name": row["tool_name"],
-        }
-        for row in rows
-    ]
+        })
+    return out
